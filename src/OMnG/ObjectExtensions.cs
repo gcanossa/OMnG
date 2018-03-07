@@ -87,6 +87,15 @@ namespace OMnG
 
             return result;
         }
+        public static Dictionary<string, object> ExludeProperties(this Dictionary<string, object> ext, IEnumerable<string> properties)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));
+
+            return ext.Where(p => !properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
+        }
 
         public static Dictionary<string, object> ExludeValueTypesProperties<T>(this T ext)
         {
@@ -103,6 +112,15 @@ namespace OMnG
 
             return result;
         }
+        public static Dictionary<string, object> ExludeValueTypesProperties(this Dictionary<string, object> ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value != null)
+                .Where(p => !p.Value.GetType().IsValueType && p.Value.GetType() != typeof(string)).ToDictionary(p => p.Key, p => p.Value);
+        }
         public static Dictionary<string, object> ExludeCollectionTypesProperties<T>(this T ext)
         {
             if (ext == null)
@@ -118,6 +136,15 @@ namespace OMnG
 
             return result;
         }
+        public static Dictionary<string, object> ExludeCollectionTypesProperties(this Dictionary<string, object> ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value != null)
+                .Where(p => !IsCollection(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
+        }
         public static Dictionary<string, object> ExludeTypesProperties<T>(this T ext, params Type[] types)
         {
             if (ext == null)
@@ -132,6 +159,15 @@ namespace OMnG
             }
 
             return result;
+        }
+        public static Dictionary<string, object> ExludeTypesProperties(this Dictionary<string, object> ext, params Type[] types)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value != null)
+                .Where(p => !types.Contains(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
 
         public static Dictionary<string, object> SelectProperties<T>(this T ext, Expression<Func<T, object>> selector)
@@ -174,7 +210,16 @@ namespace OMnG
 
             return result;
         }
-        
+        public static Dictionary<string, object> SelectProperties(this Dictionary<string, object> ext, IEnumerable<string> properties)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+            if (properties == null)
+                throw new ArgumentNullException(nameof(properties));
+
+            return ext.Where(p => properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
+        }
+
         public static Dictionary<string, object> SelectValueTypesProperties<T>(this T ext)
         {
             if (ext == null)
@@ -189,6 +234,14 @@ namespace OMnG
             }
 
             return result;
+        }
+        public static Dictionary<string, object> SelectValueTypesProperties(this Dictionary<string, object> ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value == null || p.Value.GetType().IsValueType || p.Value.GetType() == typeof(string)).ToDictionary(p=>p.Key, p=>p.Value);
         }
         public static Dictionary<string, object> SelectCollectionTypesProperties<T>(this T ext)
         {
@@ -205,6 +258,14 @@ namespace OMnG
 
             return result;
         }
+        public static Dictionary<string, object> SelectCollectionTypesProperties(this Dictionary<string, object> ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value==null || IsCollection(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
+        }
         public static Dictionary<string, object> SelectTypesProperties<T>(this T ext, params Type[] types)
         {
             if (ext == null)
@@ -219,6 +280,14 @@ namespace OMnG
             }
 
             return result;
+        }
+        public static Dictionary<string, object> SelectTypesProperties(this Dictionary<string, object> ext, params Type[] types)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return ext
+                .Where(p => p.Value == null || types.Contains(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
 
         public static Dictionary<string, object> MergeWith<T>(this T ext, Func<T, object> selector)
