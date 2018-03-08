@@ -91,11 +91,11 @@ namespace UnitTest
             Test1 test = new Test1() { Value = 1, ValueString = "test", Test = new Test2(), Tests = new List<Test2>() { new Test2(), new Test2() } };
 
             Assert.Equal(new Dictionary<string, object>() { { "Value", 1 } }, test.SelectTypesProperties(typeof(int)));
-            Assert.Equal(new Dictionary<string, object>() { { "Value", 1 }, { "ValueString", "test" } }, test.SelectValueTypesProperties());
+            Assert.Equal(new Dictionary<string, object>() { { "Value", 1 }, { "ValueString", "test" } }, test.SelectPrimitiveTypesProperties());
 
             Assert.Equal(new string[] { "ValueString", "Test", "Tests" }, test.ExludeTypesProperties(typeof(int)).Keys);
 
-            Assert.Equal(new string[] { "Test", "Tests" }, test.ExludeValueTypesProperties().Keys);
+            Assert.Equal(new string[] { "Test", "Tests" }, test.ExludePrimitiveTypesProperties().Keys);
             Assert.Equal(new string[] { "Tests" }, test.SelectCollectionTypesProperties().Keys);
 
             Assert.Equal(new string[] { "Value", "ValueString", "Test" }, test.ExludeCollectionTypesProperties().Keys);

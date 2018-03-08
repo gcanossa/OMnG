@@ -97,7 +97,7 @@ namespace OMnG
             return ext.Where(p => !properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
         }
 
-        public static Dictionary<string, object> ExludeValueTypesProperties<T>(this T ext)
+        public static Dictionary<string, object> ExludePrimitiveTypesProperties<T>(this T ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
@@ -112,7 +112,7 @@ namespace OMnG
 
             return result;
         }
-        public static Dictionary<string, object> ExludeValueTypesProperties(this Dictionary<string, object> ext)
+        public static Dictionary<string, object> ExludePrimitiveTypesProperties(this Dictionary<string, object> ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
@@ -220,7 +220,7 @@ namespace OMnG
             return ext.Where(p => properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
         }
 
-        public static Dictionary<string, object> SelectValueTypesProperties<T>(this T ext)
+        public static Dictionary<string, object> SelectPrimitiveTypesProperties<T>(this T ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
@@ -235,7 +235,7 @@ namespace OMnG
 
             return result;
         }
-        public static Dictionary<string, object> SelectValueTypesProperties(this Dictionary<string, object> ext)
+        public static Dictionary<string, object> SelectPrimitiveTypesProperties(this Dictionary<string, object> ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
@@ -408,6 +408,33 @@ namespace OMnG
                 throw new ArgumentNullException(nameof(type));
 
             return type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
+        }
+        
+        public static bool IsPrimitive<T>(this T ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return IsPrimitive(typeof(T));
+        }
+        public static bool IsPrimitive(Type type)
+        {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+            return
+                type.IsPrimitive ||
+                new Type[] {
+                    typeof(Enum),
+                    typeof(String),
+                    typeof(Decimal),
+                    typeof(DateTime),
+                    typeof(DateTimeOffset),
+                    typeof(TimeSpan),
+                    typeof(Guid)
+                }.Contains(type) ||
+                Convert.GetTypeCode(type) != TypeCode.Object ||
+                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && IsPrimitive(type.GetGenericArguments()[0]))
+                ;
         }
     }
 }
