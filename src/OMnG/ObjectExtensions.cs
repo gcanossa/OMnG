@@ -338,6 +338,7 @@ namespace OMnG
         {
             return ext.HasPropery(name, ext.GetType(), typeof(P));
         }
+
         public static object GetPropValue<T>(this T ext, string name)
         {
             return ext.GetPropValue<T, object>(name);
@@ -349,13 +350,23 @@ namespace OMnG
 
             return (P)ext.GetType().GetProperty(name).GetValue(ext);
         }
+
         public static void SetPropValue<P>(this object ext, string name, P value)
         {
             if (!ext.HasPropery<P>(name))
                 throw new ArgumentException("Property not found.", nameof(name));
 
-            ext.GetType().GetProperty(name).SetValue(ext, value);
+            ext.GetType().GetProperty(name).SetPropertyHelper(ext, value);
         }
+
+        private static void SetPropertyHelper(this PropertyInfo pinfo, object ext, object value)
+        {
+            if (!pinfo.PropertyType.IsValueType)
+                pinfo.SetValue(ext, value);
+            else
+                pinfo.SetValue(ext, Convert.ChangeType(value, pinfo.PropertyType));
+        }
+
         public static T CopyProperties<T>(this T ext, Dictionary<string, object> from, Action<T> specialMappings = null)
         {
             if (ext == null)
@@ -367,8 +378,8 @@ namespace OMnG
             foreach (KeyValuePair<string, object> kv in from)
             {
                 PropertyInfo pinfo = toType.GetProperty(kv.Key);
-                if (pinfo != null)
-                    pinfo.SetValue(ext, kv.Value);
+
+                pinfo?.SetPropertyHelper(ext, kv.Value);
             }
 
             specialMappings?.Invoke(ext);
@@ -386,8 +397,8 @@ namespace OMnG
             foreach (PropertyInfo finfo in from.GetType().GetProperties())
             {
                 PropertyInfo pinfo = toType.GetProperty(finfo.Name);
-                if (pinfo != null)
-                    pinfo.SetValue(ext, finfo.GetValue(from));
+
+                pinfo?.SetPropertyHelper(ext, finfo.GetValue(from));
             }
 
             specialMappings?.Invoke(ext);
