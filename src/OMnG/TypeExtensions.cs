@@ -8,15 +8,8 @@ namespace OMnG
 {
     public static class TypeExtensions
     {
-        public static string EscapeName(this string name)
-        {
-            return name?.Replace(".","_").Replace("+","__");
-        }
-        public static string UnescapeName(this string name)
-        {
-            return name?.Replace("__", "+").Replace("_", ".");
-        }
-
+        public static TypeExtensionsConfiguration Configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
+        
         public static string GetLablel(this object obj)
         {
             return GetLabel(obj?.GetType());
@@ -29,7 +22,10 @@ namespace OMnG
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
 
-            return type.FullName.EscapeName();
+            if (!Configuration.FilterValidType(type))
+                throw new ArgumentException($"The type is configured to be unusable", nameof(type));
+
+            return Configuration.ToLabel(type);
         }
 
         public static IEnumerable<string> GetLabels(this object obj)
@@ -47,7 +43,7 @@ namespace OMnG
             HashSet<string> result = new HashSet<string>();
             result.Add(GetLabel(type));
 
-            foreach (Type item in type.GetInterfaces())
+            foreach (Type item in type.GetInterfaces().Where(Configuration.FilterValidType))
             {
                 result.Add(GetLabel(item));
             }
@@ -55,7 +51,7 @@ namespace OMnG
             while (type != typeof(object) && !type.IsInterface)
             {
                 type = type.BaseType;
-                if (type != typeof(object))
+                if (type != typeof(object) && Configuration.FilterValidType(type))
                     result.Add(GetLabel(type));
             }
 
@@ -66,10 +62,8 @@ namespace OMnG
         {
             if (labels == null)
                 throw new ArgumentNullException(nameof(labels));
-
-            IEnumerable<Type> types = AppDomain.CurrentDomain.GetAssemblies().SelectMany(p => p.GetTypes());
-
-            return labels.Select(p => types.FirstOrDefault(x => x.FullName.EscapeName() == p));
+            
+            return labels.Select(p => Configuration.ToType(p));
         }
         
         public static object GetInstanceOfMostSpecific(this IEnumerable<Type> types)

@@ -51,7 +51,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetLablel))]
         public void GetLablel()
         {
-            Assert.Equal("UnitTest_TypeExtensionsTests__ClassC", TypeExtensions.GetLabel<ClassC>());
+            Assert.Equal("UnitTest$TypeExtensionsTests$$ClassC", TypeExtensions.GetLabel<ClassC>());
         }
 
         [Trait("Category", nameof(TypeExtensionsTests))]
@@ -60,12 +60,27 @@ namespace UnitTest
         {
             Assert.Equal(new string[]
             {
-                "UnitTest.TypeExtensionsTests+ClassC".EscapeName(),
-                "UnitTest.TypeExtensionsTests+IInterfaceC".EscapeName(),
-                "UnitTest.TypeExtensionsTests+IInterfaceA".EscapeName(),
-                "UnitTest.TypeExtensionsTests+IInterfaceB".EscapeName(),
-                "UnitTest.TypeExtensionsTests+AbstractClass".EscapeName()
+                "UnitTest$TypeExtensionsTests$$ClassC",
+                "UnitTest$TypeExtensionsTests$$IInterfaceC",
+                "UnitTest$TypeExtensionsTests$$IInterfaceA",
+                "UnitTest$TypeExtensionsTests$$IInterfaceB",
+                "UnitTest$TypeExtensionsTests$$AbstractClass"
             }, TypeExtensions.GetLabels<ClassC>());
+        }
+
+        [Trait("Category", nameof(TypeExtensionsTests))]
+        [Fact(DisplayName = nameof(GetLablelsCompress))]
+        public void GetLablelsCompress()
+        {
+            TypeExtensions.Configuration = new TypeExtensionsConfiguration.CompressConfiguration();
+
+            List<string> tmp = TypeExtensions.GetLabels<ClassC>().ToList();
+
+            tmp.ForEach(p => Assert.True(p.Length <= 32));
+
+            Assert.True(tmp.GetTypesFromLabels().GetInstanceOfMostSpecific() is ClassC);
+
+            TypeExtensions.Configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
         }
 
         [Trait("Category", nameof(TypeExtensionsTests))]
@@ -90,7 +105,7 @@ namespace UnitTest
 
             Assert.True(types.GetInstanceOfMostSpecific() is ClassC);
 
-            Assert.Throws<InvalidOperationException>(() => types.Where(p => p != typeof(ClassC)).GetInstanceOfMostSpecific());
+            Assert.Null(types.Where(p => p != typeof(ClassC)).GetInstanceOfMostSpecific());
         }
         
         [Trait("Category", nameof(TypeExtensionsTests))]
