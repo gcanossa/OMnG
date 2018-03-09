@@ -84,7 +84,7 @@ namespace OMnG
             }
 
             if (type == null)
-                throw new InvalidOperationException("None of the provided types can be used for instantiation");
+                return null;
 
             return Activator.CreateInstance(type);
         }
