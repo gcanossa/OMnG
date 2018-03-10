@@ -18,14 +18,16 @@ namespace OMnG
         {
             return GetLabel(typeof(T));
         }
-        public static string GetLabel(this Type type)
+        public static string GetLabel(this Type type, TypeExtensionsConfiguration configuration = null)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
 
-            if (!Configuration.FilterValidType(type))
+            configuration = configuration ?? Configuration;
+
+            if (!configuration.FilterValidType(type))
                 throw new ArgumentException($"The type is configured to be unusable", nameof(type));
 
-            return Configuration.ToLabel(type);
+            return configuration.ToLabel(type);
         }
 
         public static IEnumerable<string> GetLabels(this object obj)
@@ -36,14 +38,16 @@ namespace OMnG
         {
             return GetLabels(typeof(T));
         }
-        public static IEnumerable<string> GetLabels(this Type type)
+        public static IEnumerable<string> GetLabels(this Type type, TypeExtensionsConfiguration configuration = null)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
+
+            configuration = configuration ?? Configuration;
 
             HashSet<string> result = new HashSet<string>();
             result.Add(GetLabel(type));
 
-            foreach (Type item in type.GetInterfaces().Where(Configuration.FilterValidType))
+            foreach (Type item in type.GetInterfaces().Where(configuration.FilterValidType))
             {
                 result.Add(GetLabel(item));
             }
@@ -51,19 +55,21 @@ namespace OMnG
             while (type != typeof(object) && !type.IsInterface)
             {
                 type = type.BaseType;
-                if (type != typeof(object) && Configuration.FilterValidType(type))
+                if (type != typeof(object) && configuration.FilterValidType(type))
                     result.Add(GetLabel(type));
             }
 
             return result;
         }
 
-        public static IEnumerable<Type> GetTypesFromLabels(this IEnumerable<string> labels)
+        public static IEnumerable<Type> GetTypesFromLabels(this IEnumerable<string> labels, TypeExtensionsConfiguration configuration = null)
         {
             if (labels == null)
                 throw new ArgumentNullException(nameof(labels));
-            
-            return labels.Select(p => Configuration.ToType(p));
+
+            configuration = configuration ?? Configuration;
+
+            return labels.Select(p => configuration.ToType(p));
         }
         
         public static object GetInstanceOfMostSpecific(this IEnumerable<Type> types)
