@@ -10,6 +10,10 @@ namespace UnitTest
     {
         #region nested type
 
+        public interface IGeneric<T>
+        {
+
+        }
         public interface IInterfaceA
         {
             string PropA { get; set; }
@@ -45,13 +49,17 @@ namespace UnitTest
             public ClassA PropC { get; set; }
         }
 
+        public class ClassD : ClassC, IGeneric<int>
+        {
+        }
+
         #endregion
 
         [Trait("Category", nameof(TypeExtensionsTests))]
         [Fact(DisplayName = nameof(GetLablel))]
         public void GetLablel()
         {
-            Assert.Equal("UnitTest$TypeExtensionsTests$$ClassC", TypeExtensions.GetLabel<ClassC>());
+            Assert.Equal("_UnitTest$TypeExtensionsTests$$ClassC", TypeExtensions.GetLabel<ClassC>());
         }
 
         [Trait("Category", nameof(TypeExtensionsTests))]
@@ -60,11 +68,11 @@ namespace UnitTest
         {
             Assert.Equal(new string[]
             {
-                "UnitTest$TypeExtensionsTests$$ClassC",
-                "UnitTest$TypeExtensionsTests$$IInterfaceC",
-                "UnitTest$TypeExtensionsTests$$IInterfaceA",
-                "UnitTest$TypeExtensionsTests$$IInterfaceB",
-                "UnitTest$TypeExtensionsTests$$AbstractClass"
+                "_UnitTest$TypeExtensionsTests$$ClassC",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceC",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceA",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceB",
+                "_UnitTest$TypeExtensionsTests$$AbstractClass"
             }, TypeExtensions.GetLabels<ClassC>());
         }
 
@@ -76,7 +84,7 @@ namespace UnitTest
 
             List<string> tmp = TypeExtensions.GetLabels<ClassC>().ToList();
 
-            tmp.ForEach(p => Assert.True(p.Length <= 32));
+            tmp.ForEach(p => Assert.True(p.Length <= 33));
 
             Assert.True(tmp.GetTypesFromLabels().GetInstanceOfMostSpecific() is ClassC);
 
@@ -120,6 +128,21 @@ namespace UnitTest
             Assert.True(c.CheckObjectInclusion(a));
             Assert.False(c.CheckObjectInclusion(ia));
             Assert.False(c.CheckObjectInclusion(na));
+        }
+
+        [Trait("Category", nameof(TypeExtensionsTests))]
+        [Fact(DisplayName = nameof(GetLabels_Filter))]
+        public void GetLabels_Filter()
+        {
+            Assert.Equal(new string[]
+            {
+                "_UnitTest$TypeExtensionsTests$$ClassD",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceC",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceA",
+                "_UnitTest$TypeExtensionsTests$$IInterfaceB",
+                "_UnitTest$TypeExtensionsTests$$ClassC",
+                "_UnitTest$TypeExtensionsTests$$AbstractClass"
+            }, TypeExtensions.GetLabels<ClassD>());
         }
     }
 }

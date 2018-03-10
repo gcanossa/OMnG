@@ -12,57 +12,68 @@ namespace OMnG
 
         public class DefaultConfiguration : TypeExtensionsConfiguration
         {
-            public override Func<Type, string> ToLabel => 
-                t => $"{t.FullName.Replace(".", "$").Replace("+", "$$")}";
-            
-            public override Func<string, Type> ToType => 
-                n => AllTypes.First(p=>MatchType(p,n.Replace("$$", "+").Replace("$", ".")));
-            
-            public override Func<Type, string, bool> MatchType => 
-                (t, n) =>
-                    t.FullName == n;
+            public override string ToLabel(Type type)
+            {
+                return $"_{type.FullName.Replace(".", "$").Replace("+", "$$")}";
+            }
+
+            public override Type ToType(string label)
+            {
+                return AllTypes().First(p => MatchType(p, label.Substring(1).Replace("$$", "+").Replace("$", ".")));
+            }
+
+            public override bool MatchType(Type type, string label)
+            {
+                return type.FullName == label;
+            }
         }
 
         public class CompressConfiguration : DefaultConfiguration
         {
             private Dictionary<string, string> _hashToName = new Dictionary<string, string>();
             
-            public override Func<Type, string> ToLabel => 
-                t=>
+            public override string ToLabel(Type type)
+            {
+                string s = base.ToLabel(type);
+                string c = s;
+                if (s.Length > 32)
                 {
-                    string s = base.ToLabel(t);
-                    string c = s;
-                    if (s.Length > 32)
+                    using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
                     {
-                        using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
-                        {
-                            byte[] originalBytes = ASCIIEncoding.Default.GetBytes(s);
-                            byte[] encodedBytes = md5.ComputeHash(originalBytes);
+                        byte[] originalBytes = ASCIIEncoding.Default.GetBytes(s);
+                        byte[] encodedBytes = md5.ComputeHash(originalBytes);
 
-                            c = BitConverter.ToString(encodedBytes).Replace("-", "");
+                        c = BitConverter.ToString(encodedBytes).Replace("-", "");
 
-                            _hashToName.Add(c, s);
-                        }
+                        _hashToName.Add(c, s);
                     }
+                }
 
-                    return c;
-                };
+                return c;
+            }
 
-            public override Func<string, Type> ToType =>
-                n => AllTypes.First(p => MatchType(p, _hashToName[n].Replace("$$", "+").Replace("$", ".")));
+            public override Type ToType(string label)
+            {
+                return AllTypes().First(p => MatchType(p, _hashToName[label].Substring(1).Replace("$$", "+").Replace("$", ".")));
+            }
         }
 
         #endregion
 
-        public abstract Func<Type, string> ToLabel { get; }
-        public abstract Func<string, Type> ToType { get; }
+        public abstract string ToLabel(Type type);
+        public abstract Type ToType(string label);
 
-        public abstract Func<Type, string, bool> MatchType { get; }
+        public abstract bool MatchType(Type type, string label);
 
-        public virtual Func<Type, bool> FilterValidType { get; } =
-            t => !t.IsGenericType;
+        public virtual bool FilterValidType(Type type)
+        {
+            return !type.IsGenericType;
+        }
 
-        protected IEnumerable<Type> AllTypes => AppDomain.CurrentDomain.GetAssemblies().SelectMany(p => p.GetTypes());
+        protected IEnumerable<Type> AllTypes()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(p => p.GetTypes());
+        }
 
         protected void Validate()
         {
@@ -72,12 +83,6 @@ namespace OMnG
 
         public TypeExtensionsConfiguration()
         {
-            if (ToLabel == null)
-                throw new ArgumentNullException(nameof(ToLabel));
-            if (ToType == null)
-                throw new ArgumentNullException(nameof(ToType));
-            if (MatchType == null)
-                throw new ArgumentNullException(nameof(MatchType));
             Validate();
         }
     }
