@@ -45,7 +45,10 @@ namespace OMnG
 
                         c = BitConverter.ToString(encodedBytes).Replace("-", "");
 
-                        _hashToName.Add(c, s);
+                        if (!_hashToName.ContainsKey(c))
+                            _hashToName.Add(c, s);
+                        else if (_hashToName[c] != s)
+                            throw new InvalidOperationException($"Duplicate hash found. '{s}' has the same hash of '{_hashToName[c]}' : '{c}'");
                     }
                 }
 
