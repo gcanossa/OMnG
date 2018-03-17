@@ -406,12 +406,82 @@ namespace OMnG
             return ext;
         }
 
-        public static bool IsCollection<T>(this T ext)
+        public static object GetDefault(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(Type));
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
+
+        public static object GetInstanceOf(Type type, IDictionary<string, object> param)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(type));
+            param = param ?? new Dictionary<string, object>();
+
+            if (IsPrimitive(type))
+            {
+                return Convert.ChangeType(param.First().Value, type);
+            }
+            else
+            {
+                object[] args = GetParamsForConstructor(type, param);
+                if (args != null)
+                    return args.Length == 0 ?
+                            Activator.CreateInstance(type, args).CopyProperties(param) :
+                            Activator.CreateInstance(type, args);
+            }
+
+            throw new Exception("Unable to build an object of the desired type");
+        }
+        private static object[] GetParamsForConstructor(Type type, IDictionary<string, object> param)
+        {
+            if (type.GetConstructor(new Type[0]) != null)
+                return new object[0];
+            else
+            {
+                List<object> result = new List<object>();
+                foreach (ConstructorInfo item in type.GetConstructors())
+                {
+                    List<ParameterInfo> tmp = item.GetParameters().ToList();
+
+                    result.Clear();
+                    foreach (ParameterInfo pinfo in tmp.ToList())
+                    {
+                        if (param.ContainsKey(pinfo.Name))
+                        {
+                            tmp.Remove(pinfo);
+                            if (IsPrimitive(pinfo.ParameterType))
+                                result.Add(Convert.ChangeType(param[pinfo.Name], pinfo.ParameterType));
+                            else
+                                result.Add(param[pinfo.Name]);
+                        }
+                    }
+                    if (tmp.Count == 0)
+                        return result.ToArray();
+                }
+
+                return null;
+            }
+        }
+
+        public static bool IsNumeric(this object ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
 
-            return IsCollection(typeof(T));
+            return IsNumeric(ext.GetType());
+        }
+        public static bool IsNumeric(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(Type));
+            return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
+        }
+
+        public static bool IsCollection(this object ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return IsCollection(ext.GetType());
         }
         public static bool IsCollection(Type type)
         {
@@ -421,12 +491,12 @@ namespace OMnG
             return type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
         }
         
-        public static bool IsPrimitive<T>(this T ext)
+        public static bool IsPrimitive(this object ext)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
 
-            return IsPrimitive(typeof(T));
+            return IsPrimitive(ext.GetType());
         }
         public static bool IsPrimitive(Type type)
         {

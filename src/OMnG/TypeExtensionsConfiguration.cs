@@ -14,12 +14,12 @@ namespace OMnG
         {
             public override string ToLabel(Type type)
             {
-                return $"_{type.FullName.Replace(".", "$").Replace("+", "$$")}";
+                return $"{type.FullName}";
             }
 
             public override Type ToType(string label)
             {
-                return AllTypes().First(p => MatchType(p, label.Substring(1).Replace("$$", "+").Replace("$", ".")));
+                return AllTypes().First(p => MatchType(p, label));
             }
 
             public override bool MatchType(Type type, string label)
@@ -32,32 +32,43 @@ namespace OMnG
         {
             private Dictionary<string, string> _hashToName = new Dictionary<string, string>();
             
-            public override string ToLabel(Type type)
+            private string AddAndGet(string label)
             {
-                string s = base.ToLabel(type);
-                string c = s;
-                if (s.Length > 32)
-                {
-                    using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
-                    {
-                        byte[] originalBytes = ASCIIEncoding.Default.GetBytes(s);
-                        byte[] encodedBytes = md5.ComputeHash(originalBytes);
+                string c = HashLabelstring(label);
 
-                        c = BitConverter.ToString(encodedBytes).Replace("-", "");
-
-                        if (!_hashToName.ContainsKey(c))
-                            _hashToName.Add(c, s);
-                        else if (_hashToName[c] != s)
-                            throw new InvalidOperationException($"Duplicate hash found. '{s}' has the same hash of '{_hashToName[c]}' : '{c}'");
-                    }
-                }
+                if (!_hashToName.ContainsKey(c))
+                    _hashToName.Add(c, label);
+                else if (_hashToName[c] != label)
+                    throw new InvalidOperationException($"Duplicate hash found. '{label}' has the same hash of '{_hashToName[c]}' : '{c}'");
 
                 return c;
             }
 
+            private string HashLabelstring(string label)
+            {
+                if (label.Length > 32)
+                {
+                    using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
+                    {
+                        byte[] originalBytes = ASCIIEncoding.Default.GetBytes(label);
+                        byte[] encodedBytes = md5.ComputeHash(originalBytes);
+
+                        label = BitConverter.ToString(encodedBytes).Replace("-", "");
+                    }
+                }
+
+                return label;
+            }
+
+            public override string ToLabel(Type type)
+            {
+                string s = base.ToLabel(type);
+                return AddAndGet(s);
+            }
+
             public override Type ToType(string label)
             {
-                return AllTypes().First(p => MatchType(p, _hashToName[label].Substring(1).Replace("$$", "+").Replace("$", ".")));
+                return AllTypes().First(p => MatchType(p, _hashToName.ContainsKey(label) ? _hashToName[label] : _hashToName[AddAndGet(label)]));
             }
         }
 
