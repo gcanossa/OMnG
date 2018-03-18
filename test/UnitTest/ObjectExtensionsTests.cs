@@ -23,6 +23,15 @@ namespace UnitTest
             public int Value { get; set; }
             public string ValueString { get; set; }
         }
+        public class TestDateTime
+        {
+            public int Value { get; set; }
+            public string ValueString { get; set; }
+            public DateTime ValueDate { get; set; }
+            public DateTimeOffset ValueDateOff { get; set; }
+            public DateTime? ValueDateNull { get; set; }
+            public DateTimeOffset? ValueDateOffNull { get; set; }
+        }
 
         #endregion
 
@@ -99,6 +108,29 @@ namespace UnitTest
             Assert.Equal(new string[] { "Tests" }, test.SelectCollectionTypesProperties().Keys);
 
             Assert.Equal(new string[] { "Value", "ValueString", "Test" }, test.ExludeCollectionTypesProperties().Keys);
+        }
+
+        [Trait("Category", "ObjectExtensions")]
+        [Fact(DisplayName = "DateTime_Test")]
+        public void DateTime_Test()
+        {
+            DateTime now = DateTime.Now;
+            now = now.AddTicks(-(now.Ticks % TimeSpan.FromMilliseconds(1).Ticks));
+            TestDateTime test = new TestDateTime() { Value = 1, ValueString = "test", ValueDate = now, ValueDateOff =now, ValueDateNull = now, ValueDateOffNull = now};
+
+            var props = test.ToPropDictionary();
+
+            props["ValueDate"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
+            props["ValueDateOff"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
+            props["ValueDateNull"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
+            props["ValueDateOffNull"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
+
+            test = test.CopyProperties(props);
+
+            Assert.Equal(now, test.ValueDate);
+            Assert.Equal(now, test.ValueDateOff);
+            Assert.Equal(now, test.ValueDateNull);
+            Assert.Equal(now, test.ValueDateOffNull);
         }
 
         [Trait("Category", "ObjectExtensions")]

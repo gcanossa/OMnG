@@ -361,10 +361,24 @@ namespace OMnG
 
         private static void SetPropertyHelper(this PropertyInfo pinfo, object ext, object value)
         {
-            if (!pinfo.PropertyType.IsValueType)
-                pinfo.SetValue(ext, value);
+            if (value == null)
+                pinfo.SetValue(ext, GetDefault(pinfo.PropertyType));
             else
-                pinfo.SetValue(ext, Convert.ChangeType(value, pinfo.PropertyType));
+            {
+                if (!pinfo.PropertyType.IsValueType)
+                    pinfo.SetValue(ext, value);
+                else if (IsDateTime(pinfo.PropertyType) && IsNumeric(value.GetType()))
+                {
+                    DateTimeOffset d = DateTimeOffset.FromUnixTimeMilliseconds((long)Convert.ChangeType(value, typeof(long)));
+
+                    if (pinfo.PropertyType.IsAssignableFrom(typeof(DateTimeOffset)))
+                        pinfo.SetValue(ext, d.ToLocalTime());
+                    else
+                        pinfo.SetValue(ext, d.ToLocalTime().DateTime);
+                }
+                else
+                    pinfo.SetValue(ext, Convert.ChangeType(value, pinfo.PropertyType));
+            }
         }
 
         public static T CopyProperties<T>(this T ext, Dictionary<string, object> from, Action<T> specialMappings = null)
@@ -463,6 +477,23 @@ namespace OMnG
             }
         }
 
+        public static DateTime Truncate(this DateTime dateTime, TimeSpan timeSpan)
+        {
+            if (timeSpan == TimeSpan.Zero) return dateTime; // Or could throw an ArgumentException
+            return dateTime.AddTicks(-(dateTime.Ticks % timeSpan.Ticks));
+        }
+        public static bool IsDateTime(this object ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return IsDateTime(ext.GetType());
+        }
+        public static bool IsDateTime(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(Type));
+            return type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateTime?) || type == typeof(DateTimeOffset?);
+        }
         public static bool IsNumeric(this object ext)
         {
             if (ext == null)
