@@ -387,7 +387,7 @@ namespace OMnG
                 throw new ArgumentNullException(nameof(ext));
             from = from ?? throw new ArgumentNullException(nameof(from));
 
-            Type toType = typeof(T);
+            Type toType = ext.GetType();
 
             foreach (KeyValuePair<string, object> kv in from)
             {
@@ -406,7 +406,7 @@ namespace OMnG
                 throw new ArgumentNullException(nameof(ext));
             from = from ?? throw new ArgumentNullException(nameof(from));
 
-            Type toType = typeof(T);
+            Type toType = ext.GetType();
 
             foreach (PropertyInfo finfo in from.GetType().GetProperties())
             {

@@ -11,7 +11,11 @@ namespace UnitTest
     {
         #region nested types
 
-        public class Test1
+        public interface IValue
+        {
+            int Value { get; }
+        }
+        public class Test1 : IValue
         {
             public int Value { get; set; }
             public string ValueString { get; set; }
@@ -150,6 +154,9 @@ namespace UnitTest
             test1.CopyProperties(test.ExludeProperties(p => p.Value));
             Assert.Equal(0, test1.Value);
             Assert.Equal("ciao", test1.ValueString);
+
+            IValue value = new Test1().CopyProperties<IValue>(new { Value = 3 });
+            Assert.Equal(3, value.Value);
         }
 
         [Trait("Category", "ObjectExtensions")]
