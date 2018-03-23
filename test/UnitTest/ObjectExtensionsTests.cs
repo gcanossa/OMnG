@@ -165,7 +165,7 @@ namespace UnitTest
         {
             Test2 test = new Test2() { Value = 3, ValueString = "prova" };
 
-            Dictionary<string, object> r1 = test.MergeWith(new { Value = 4, Prova = "lui" });
+            IDictionary<string, object> r1 = test.MergeWith(new { Value = 4, Prova = "lui" });
 
             Assert.Equal(new Dictionary<string, object>() { { "Value", 4 }, { "ValueString", "prova" }, { "Prova", "lui" } }, r1);
         }
