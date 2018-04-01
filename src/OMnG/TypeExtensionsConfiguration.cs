@@ -64,6 +64,9 @@ namespace OMnG
         {
             ImportNewAssemblies();
 
+            if (!LabelTypes.ContainsKey(type))
+                ManageType(GetLabel(type), type);
+
             return LabelTypes[type];
         }
         public virtual Type ToType(string label)
@@ -135,6 +138,9 @@ namespace OMnG
         public IEnumerable<Type> GetInterfaces(Type type)
         {
             ImportNewAssemblies();
+
+            if(!TypeInterfaces.ContainsKey(type))
+                TypeInterfaces.Add(type, type.GetInterfaces());
 
             return TypeInterfaces[type];
         }
