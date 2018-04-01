@@ -123,7 +123,7 @@ namespace OMnG
         }
         protected virtual bool AssemblyLoadFilter(Assembly assembly)
         {
-            return !assembly.FullName.StartsWith("System.") && assembly.FullName != "System" && !assembly.FullName.StartsWith("Microsoft");
+            return true;
         }
         protected IEnumerable<Type> AllTypes()
         {
