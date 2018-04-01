@@ -17,6 +17,11 @@ namespace OMnG
             {
                 return $"{type.FullName}";
             }
+
+            protected override Type GetLabelType(string label)
+            {
+                return AllTypes().FirstOrDefault(p => p.FullName == label);
+            }
         }
 
         public class CompressConfiguration : DefaultConfiguration
@@ -56,6 +61,11 @@ namespace OMnG
                 string s = base.GetLabel(type);
                 return AddAndGet(s);
             }
+
+            protected override Type GetLabelType(string label)
+            {
+                return AllTypes().First(p => p.FullName == (_hashToName.ContainsKey(label) ? _hashToName[label] : _hashToName[AddAndGet(label)]));
+            }
         }
 
         #endregion
@@ -73,11 +83,15 @@ namespace OMnG
         {
             ImportNewAssemblies();
 
+            if (!TypeLabels.ContainsKey(label))
+                ManageType(label, GetLabelType(label));
+
             return TypeLabels[label];
         }
 
         protected abstract string GetLabel(Type type);
-        
+        protected abstract Type GetLabelType(string label);
+
         public virtual bool FilterValidType(Type type)
         {
             return !type.IsGenericType;
