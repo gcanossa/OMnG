@@ -129,15 +129,16 @@ namespace OMnG
         {
             if (!TypeLabels.ContainsKey(label))
             {
-                AddType(label, type);
+                LabelTypes.Add(type, label);
+                TypeLabels.Add(label, type);
+            }
+            else
+            {
+                LabelTypes.Add(type, label);
+                TypeLabels[label] = type;
             }
         }
 
-        protected void AddType(string label, Type type)
-        {
-            LabelTypes.Add(type, label);
-            TypeLabels.Add(label, type);
-        }
         protected virtual bool AssemblyLoadFilter(Assembly assembly)
         {
             return true;
