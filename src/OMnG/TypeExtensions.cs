@@ -8,7 +8,9 @@ namespace OMnG
 {
     public static class TypeExtensions
     {
-        public static TypeExtensionsConfiguration Configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
+        private static object _lk = new object();
+        private static TypeExtensionsConfiguration _configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
+        public static TypeExtensionsConfiguration Configuration { get { lock (_lk) { return _configuration; } } set { lock (_lk) { _configuration = value; } } }
         
         public static string GetLablel(this object obj)
         {
@@ -47,7 +49,7 @@ namespace OMnG
             HashSet<string> result = new HashSet<string>();
             result.Add(GetLabel(type));
 
-            foreach (Type item in type.GetInterfaces().Where(configuration.FilterValidType))
+            foreach (Type item in configuration.GetInterfaces(type).Where(configuration.FilterValidType))
             {
                 result.Add(GetLabel(item));
             }

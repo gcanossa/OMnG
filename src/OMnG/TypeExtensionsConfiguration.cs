@@ -13,19 +13,9 @@ namespace OMnG
 
         public class DefaultConfiguration : TypeExtensionsConfiguration
         {
-            public override string ToLabel(Type type)
+            protected override string GetLabel(Type type)
             {
                 return $"{type.FullName}";
-            }
-
-            public override Type ToType(string label)
-            {
-                return AllTypes().First(p => MatchType(p, label));
-            }
-
-            public override bool MatchType(Type type, string label)
-            {
-                return type.FullName == label;
             }
         }
 
@@ -61,49 +51,92 @@ namespace OMnG
                 return label;
             }
 
-            public override string ToLabel(Type type)
+            protected override string GetLabel(Type type)
             {
-                string s = base.ToLabel(type);
+                string s = base.GetLabel(type);
                 return AddAndGet(s);
-            }
-
-            public override Type ToType(string label)
-            {
-                return AllTypes().First(p => MatchType(p, _hashToName.ContainsKey(label) ? _hashToName[label] : _hashToName[AddAndGet(label)]));
             }
         }
 
         #endregion
 
-        public abstract string ToLabel(Type type);
-        public abstract Type ToType(string label);
+        public virtual string ToLabel(Type type)
+        {
+            ImportNewAssemblies();
 
-        public abstract bool MatchType(Type type, string label);
+            return LabelTypes[type];
+        }
+        public virtual Type ToType(string label)
+        {
+            ImportNewAssemblies();
 
+            return TypeLabels[label];
+        }
+
+        protected abstract string GetLabel(Type type);
+        
         public virtual bool FilterValidType(Type type)
         {
             return !type.IsGenericType;
         }
 
-        private static List<Assembly> LoadedAssemblies = new List<Assembly>();
-        private static List<Type> LoadedTypes = new List<Type>();
+        private List<Assembly> LoadedAssemblies = new List<Assembly>();
+        private List<Type> LoadedTypes = new List<Type>();
+        private Dictionary<Type, Type[]> TypeInterfaces = new Dictionary<Type, Type[]>();
+        private Dictionary<string, Type> TypeLabels = new Dictionary<string, Type>();
+        private Dictionary<Type, string> LabelTypes = new Dictionary<Type, string>();
 
-        private static void ImportNewAssemblies()
+        private void ImportNewAssemblies()
         {
-            IEnumerable<Assembly> newAssemblies = AppDomain.CurrentDomain.GetAssemblies().Except(LoadedAssemblies);
-
-            if (newAssemblies.Count() > 0)
+            lock (LoadedAssemblies)
             {
-                LoadedTypes.AddRange(newAssemblies.SelectMany(p => p.GetTypes()));
-                LoadedAssemblies.AddRange(newAssemblies);
+                IEnumerable<Assembly> newAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(AssemblyLoadFilter).Except(LoadedAssemblies);
+
+                if (newAssemblies.Count() > 0)
+                {
+                    LoadedTypes.AddRange(newAssemblies.SelectMany(p => p.GetTypes()).Distinct());
+
+                    foreach (Type item in newAssemblies.SelectMany(p => p.GetTypes()).Distinct())
+                    {
+                        if(!TypeInterfaces.ContainsKey(item))
+                            TypeInterfaces.Add(item, item.GetInterfaces());
+                        ManageType(GetLabel(item), item);
+                    }
+
+                    LoadedAssemblies.AddRange(newAssemblies);
+                }
+            }
+        }
+        
+        protected virtual void ManageType(string label, Type type)
+        {
+            if (!TypeLabels.ContainsKey(label))
+            {
+                AddType(label, type);
             }
         }
 
+        protected void AddType(string label, Type type)
+        {
+            LabelTypes.Add(type, label);
+            TypeLabels.Add(label, type);
+        }
+        protected virtual bool AssemblyLoadFilter(Assembly assembly)
+        {
+            return !assembly.FullName.StartsWith("System.") && assembly.FullName != "System" && !assembly.FullName.StartsWith("Microsoft");
+        }
         protected IEnumerable<Type> AllTypes()
         {
             ImportNewAssemblies();
 
             return LoadedTypes;
+        }
+
+        public IEnumerable<Type> GetInterfaces(Type type)
+        {
+            ImportNewAssemblies();
+
+            return TypeInterfaces[type];
         }
 
         protected void Validate()

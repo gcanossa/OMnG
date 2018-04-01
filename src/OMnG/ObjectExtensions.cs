@@ -10,7 +10,9 @@ namespace OMnG
 {
     public static class ObjectExtensions
     {
-        public static ObjectExtensionsConfiguration Configuration = new ObjectExtensionsConfiguration.DefaultConfiguration();
+        private static object _lk = new object();
+        private static ObjectExtensionsConfiguration _configuration = new ObjectExtensionsConfiguration.DefaultConfiguration();
+        public static ObjectExtensionsConfiguration Configuration { get { lock (_lk) { return _configuration; } } set { lock (_lk) { _configuration = value; } } }
 
         public static IEnumerable<string> ToPropertyNameCollection<T, R>(this Expression<Func<T, R>> ext) where T : class
         {
@@ -591,7 +593,7 @@ namespace OMnG
 
         public static bool HasEnumerable(Type type)
         {
-            return type.GetInterfaces().Any(p => IsEnumerable(p));
+            return TypeExtensions.Configuration.GetInterfaces(type).Any(p => IsEnumerable(p));
         }
 
         public static bool CheckObjectInclusion(this object obj, object included)
@@ -643,7 +645,7 @@ namespace OMnG
                 }
             }
 
-            Type[] ifaces = seqType.GetInterfaces();
+            Type[] ifaces = TypeExtensions.Configuration.GetInterfaces(seqType).ToArray();
             if (ifaces != null && ifaces.Length > 0)
             {
                 foreach (Type iface in ifaces)
@@ -653,9 +655,10 @@ namespace OMnG
                 }
             }
 
-            if (seqType.BaseType != null && seqType.BaseType != typeof(object))
+            Type baseType = seqType.BaseType;
+            if (baseType != null && baseType != typeof(object))
             {
-                return FindIEnumerable(seqType.BaseType);
+                return FindIEnumerable(baseType);
             }
 
             return null;
