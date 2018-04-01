@@ -95,6 +95,8 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetTypesFromLabels))]
         public void GetTypesFromLabels()
         {
+            IEnumerable<string> labels = TypeExtensions.GetLabels<ClassC>();
+            IEnumerable<Type> types = labels.GetTypesFromLabels();
             Assert.Equal(new Type[]
             {
                 typeof(ClassC),
@@ -102,7 +104,7 @@ namespace UnitTest
                 typeof(IInterfaceA),
                 typeof(IInterfaceB),
                 typeof(AbstractClass)
-            }, TypeExtensions.GetLabels<ClassC>().GetTypesFromLabels());
+            }, types);
         }
         
         [Trait("Category", nameof(TypeExtensionsTests))]

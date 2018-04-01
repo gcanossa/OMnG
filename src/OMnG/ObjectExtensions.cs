@@ -10,6 +10,8 @@ namespace OMnG
 {
     public static class ObjectExtensions
     {
+        public static ObjectExtensionsConfiguration Configuration = new ObjectExtensionsConfiguration.DefaultConfiguration();
+
         public static IEnumerable<string> ToPropertyNameCollection<T, R>(this Expression<Func<T, R>> ext) where T : class
         {
             if (ext == null)
@@ -44,7 +46,7 @@ namespace OMnG
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
-            return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => p.GetValue(ext));
+            return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => Configuration.GetValue(p,ext));
         }
         
         public static IDictionary<string, object> ExludeProperties<T>(this T ext, Expression<Func<T, object>> selector) where T : class
@@ -231,7 +233,7 @@ namespace OMnG
 
             Dictionary<string, object> result = new Dictionary<string, object>();
             foreach (string item in typeof(T).GetProperties()
-                .Where(p => p.PropertyType.IsValueType || p.PropertyType == typeof(string))
+                .Where(p => IsPrimitive(p.PropertyType))
                 .Select(p => p.Name))
             {
                 result.Add(item, ext.GetPropValue(item));
@@ -245,7 +247,7 @@ namespace OMnG
                 throw new ArgumentNullException(nameof(ext));
 
             return ext
-                .Where(p => p.Value == null || p.Value.GetType().IsValueType || p.Value.GetType() == typeof(string)).ToDictionary(p=>p.Key, p=>p.Value);
+                .Where(p => p.Value == null || IsPrimitive(p.Value)).ToDictionary(p=>p.Key, p=>p.Value);
         }
         public static IDictionary<string, object> SelectCollectionTypesProperties<T>(this T ext) where T : class
         {
@@ -352,7 +354,7 @@ namespace OMnG
             if (!ext.HasPropery<P>(name))
                 throw new ArgumentException("Property not found.", nameof(name));
 
-            return (P)ext.GetType().GetProperty(name).GetValue(ext);
+            return (P)Configuration.GetValue(ext.GetType().GetProperty(name),ext);
         }
 
         public static void SetPropValue<P>(this object ext, string name, P value)
@@ -366,22 +368,22 @@ namespace OMnG
         private static void SetPropertyHelper(this PropertyInfo pinfo, object ext, object value)
         {
             if (value == null)
-                pinfo.SetValue(ext, GetDefault(pinfo.PropertyType));
+                Configuration.SetValue(pinfo, ext, GetDefault(pinfo.PropertyType));
             else
             {
                 if (!pinfo.PropertyType.IsValueType)
-                    pinfo.SetValue(ext, value);
+                    Configuration.SetValue(pinfo,ext, value);
                 else if (IsDateTime(pinfo.PropertyType) && IsNumeric(value.GetType()))
                 {
                     DateTimeOffset d = DateTimeOffset.FromUnixTimeMilliseconds((long)Convert.ChangeType(value, typeof(long)));
 
                     if (pinfo.PropertyType.IsAssignableFrom(typeof(DateTimeOffset)))
-                        pinfo.SetValue(ext, d.ToLocalTime());
+                        Configuration.SetValue(pinfo,ext, d.ToLocalTime());
                     else
-                        pinfo.SetValue(ext, d.ToLocalTime().DateTime);
+                        Configuration.SetValue(pinfo,ext, d.ToLocalTime().DateTime);
                 }
                 else
-                    pinfo.SetValue(ext, Convert.ChangeType(value, pinfo.PropertyType));
+                    Configuration.SetValue(pinfo,ext, Convert.ChangeType(value, pinfo.PropertyType));
             }
         }
 
@@ -416,7 +418,7 @@ namespace OMnG
             {
                 PropertyInfo pinfo = toType.GetProperty(finfo.Name);
 
-                pinfo?.SetPropertyHelper(ext, finfo.GetValue(from));
+                pinfo?.SetPropertyHelper(ext, Configuration.GetValue(finfo,from));
             }
 
             specialMappings?.Invoke(ext);
@@ -430,6 +432,27 @@ namespace OMnG
             return type.IsValueType ? Activator.CreateInstance(type) : null;
         }
 
+        public static object GetInstanceOfMostSpecific(this IEnumerable<Type> types)
+        {
+            types = types ?? throw new ArgumentNullException(nameof(types));
+
+            Type type = null;
+            foreach (Type t in types.Where(p => !p.IsInterface && !p.IsAbstract && p.GetConstructor(new Type[0]) != null))
+            {
+                if (type == null || type.IsAssignableFrom(t))
+                    type = t;
+            }
+
+            if (type == null)
+                return null;
+
+            return Activator.CreateInstance(type);
+        }
+        public static System.Collections.IList GetListOf(Type type)
+        {
+            Type lst = typeof(List<>).MakeGenericType(type);
+            return (System.Collections.IList)Activator.CreateInstance(lst);
+        }
         public static object GetInstanceOf(Type type, IDictionary<string, object> param)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
@@ -551,6 +574,91 @@ namespace OMnG
                 Convert.GetTypeCode(type) != TypeCode.Object ||
                 (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && IsPrimitive(type.GetGenericArguments()[0]))
                 ;
+        }
+
+        public static bool IsEnumerable(this object ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return IsEnumerable(ext.GetType());
+        }
+        public static bool IsEnumerable(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(type));
+            return type.Name == "IEnumerable`1";
+        }
+
+        public static bool HasEnumerable(Type type)
+        {
+            return type.GetInterfaces().Any(p => IsEnumerable(p));
+        }
+
+        public static bool CheckObjectInclusion(this object obj, object included)
+        {
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+
+            if (included == null)
+                return false;
+
+            Type type = obj.GetType();
+            foreach (PropertyInfo pinfo in included.GetType().GetProperties().Where(p => p.CanRead))
+            {
+                PropertyInfo tmp = type.GetProperty(pinfo.Name);
+                if (
+                    tmp == null ||
+                    pinfo.PropertyType != tmp.PropertyType ||
+                    (Configuration.GetValue(pinfo, included) == null && Configuration.GetValue(tmp, obj) != null) ||
+                    (Configuration.GetValue(pinfo, included) != null && Configuration.GetValue(tmp, obj) == null) ||
+                    (Configuration.GetValue(pinfo, included) != null && Configuration.GetValue(tmp, obj) != null && !Configuration.GetValue(pinfo, included).Equals(ObjectExtensions.Configuration.GetValue(tmp, obj))))
+                    return false;
+            }
+            return true;
+        }
+        
+        public static Type GetElementType(Type seqType)
+        {
+            Type ienum = FindIEnumerable(seqType);
+            if (ienum == null) return seqType;
+            return ienum.GetGenericArguments()[0];
+        }
+        public static Type FindIEnumerable(Type seqType)
+        {
+            if (seqType == null || seqType == typeof(string))
+                return null;
+
+            if (seqType.IsArray)
+                return typeof(IEnumerable<>).MakeGenericType(seqType.GetElementType());
+
+            if (seqType.IsGenericType)
+            {
+                foreach (Type arg in seqType.GetGenericArguments())
+                {
+                    Type ienum = typeof(IEnumerable<>).MakeGenericType(arg);
+                    if (ienum.IsAssignableFrom(seqType))
+                    {
+                        return ienum;
+                    }
+                }
+            }
+
+            Type[] ifaces = seqType.GetInterfaces();
+            if (ifaces != null && ifaces.Length > 0)
+            {
+                foreach (Type iface in ifaces)
+                {
+                    Type ienum = FindIEnumerable(iface);
+                    if (ienum != null) return ienum;
+                }
+            }
+
+            if (seqType.BaseType != null && seqType.BaseType != typeof(object))
+            {
+                return FindIEnumerable(seqType.BaseType);
+            }
+
+            return null;
         }
     }
 }

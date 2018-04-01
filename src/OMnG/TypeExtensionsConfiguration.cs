@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -31,7 +32,7 @@ namespace OMnG
         public class CompressConfiguration : DefaultConfiguration
         {
             private Dictionary<string, string> _hashToName = new Dictionary<string, string>();
-            
+
             private string AddAndGet(string label)
             {
                 string c = HashLabelstring(label);
@@ -84,9 +85,25 @@ namespace OMnG
             return !type.IsGenericType;
         }
 
+        private static List<Assembly> LoadedAssemblies = new List<Assembly>();
+        private static List<Type> LoadedTypes = new List<Type>();
+
+        private static void ImportNewAssemblies()
+        {
+            IEnumerable<Assembly> newAssemblies = AppDomain.CurrentDomain.GetAssemblies().Except(LoadedAssemblies);
+
+            if (newAssemblies.Count() > 0)
+            {
+                LoadedTypes.AddRange(newAssemblies.SelectMany(p => p.GetTypes()));
+                LoadedAssemblies.AddRange(newAssemblies);
+            }
+        }
+
         protected IEnumerable<Type> AllTypes()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(p => p.GetTypes());
+            ImportNewAssemblies();
+
+            return LoadedTypes;
         }
 
         protected void Validate()

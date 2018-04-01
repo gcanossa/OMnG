@@ -71,45 +71,5 @@ namespace OMnG
 
             return labels.Select(p => configuration.ToType(p));
         }
-        
-        public static object GetInstanceOfMostSpecific(this IEnumerable<Type> types)
-        {
-            types = types ?? throw new ArgumentNullException(nameof(types));
-
-            Type type = null;
-            foreach (Type t in types.Where(p=>!p.IsInterface && !p.IsAbstract && p.GetConstructor(new Type[0])!=null))
-            {
-                if (type == null || type.IsAssignableFrom(t))
-                    type = t;
-            }
-
-            if (type == null)
-                return null;
-
-            return Activator.CreateInstance(type);
-        }
-
-        public static bool CheckObjectInclusion(this object obj, object included)
-        {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
-            if (included == null)
-                return false;
-
-            Type type = obj.GetType();
-            foreach (PropertyInfo pinfo in included.GetType().GetProperties().Where(p => p.CanRead))
-            {
-                PropertyInfo tmp = type.GetProperty(pinfo.Name);
-                if (
-                    tmp == null ||
-                    pinfo.PropertyType != tmp.PropertyType ||
-                    (pinfo.GetValue(included) == null && tmp.GetValue(obj) != null) ||
-                    (pinfo.GetValue(included) != null && tmp.GetValue(obj) == null) ||
-                    (pinfo.GetValue(included) != null && tmp.GetValue(obj) != null && !pinfo.GetValue(included).Equals(tmp.GetValue(obj))))
-                    return false;
-            }
-            return true;
-        }
     }
 }
