@@ -12,7 +12,7 @@ namespace OMnG
     {
         #region nested types
 
-        public class DefaultConfiguration : DelegateILCachingConfiguration
+        public class DefaultConfiguration : DelegateCachingConfiguration
         {
 
         }
@@ -99,8 +99,6 @@ namespace OMnG
                     ilGenerator.Emit(OpCodes.Ret);
                     
                     Setters.Add(property, (Action<object, object>)d.CreateDelegate(typeof(Action<object, object>)));
-
-                    property.SetValue(target, value);
                 }
                 Setters[property](target, value);
             }
@@ -175,8 +173,6 @@ namespace OMnG
                         .Compile();
 
                     Setters.Add(property, fo);
-
-                    property.SetValue(target, value);
                 }
                 Setters[property](target, value);
             }

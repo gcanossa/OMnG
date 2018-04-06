@@ -48,6 +48,9 @@ namespace OMnG
         {
             ext = ext ?? throw new ArgumentNullException(nameof(ext));
 
+            if (typeof(IDictionary<string, object>).IsAssignableFrom(ext.GetType()))
+                throw new ArgumentException("ext is already a dictionary");
+
             return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => Configuration.GetValue(p,ext));
         }
         
@@ -175,6 +178,21 @@ namespace OMnG
                 .Where(p => p.Value != null)
                 .Where(p => !types.Contains(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
+        public static IDictionary<string, object> ExludeReadonlyProperties<T>(this T ext) where T : class
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            foreach (string item in typeof(T).GetProperties()
+                .Where(p => p.CanWrite && p.CanRead)
+                .Select(p => p.Name))
+            {
+                result.Add(item, ext.GetPropValue(item));
+            }
+
+            return result;
+        }
 
         public static IDictionary<string, object> SelectProperties<T>(this T ext, Expression<Func<T, object>> selector) where T : class
         {
@@ -297,6 +315,21 @@ namespace OMnG
             return ext
                 .Where(p => p.Value == null || types.Contains(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
+        public static IDictionary<string, object> SelectReadonlyProperties<T>(this T ext) where T : class
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            foreach (string item in typeof(T).GetProperties()
+                .Where(p => !p.CanWrite && p.CanRead)
+                .Select(p => p.Name))
+            {
+                result.Add(item, ext.GetPropValue(item));
+            }
+
+            return result;
+        }
 
         public static IDictionary<string, object> MergeWith<T>(this T ext, Func<T, object> selector) where T : class
         {
@@ -385,7 +418,7 @@ namespace OMnG
                         Configuration.SetValue(pinfo,ext, d.ToLocalTime().DateTime);
                 }
                 else
-                    Configuration.SetValue(pinfo,ext, Convert.ChangeType(value, pinfo.PropertyType));
+                    Configuration.SetValue(pinfo, ext, value);
             }
         }
 

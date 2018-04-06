@@ -37,6 +37,62 @@ namespace UnitTest
             public DateTimeOffset? ValueDateOffNull { get; set; }
         }
 
+        public class TestEveryType
+        {
+            public int Id { get; set; }
+            public int Integer { get; set; }
+            public int? IntegerNullable { get; set; }
+            public double Double { get; set; }
+            public DateTime DateTime { get; set; }
+            public DateTime? DateTimeNullable { get; set; }
+            public DateTimeOffset DateTimeOffset { get; set; }
+            public DateTimeOffset? DateTimeOffsetNullable { get; set; }
+            public TimeSpan TimeSpan { get; set; }
+            public TimeSpan? TimeSpanNullable { get; set; }
+            public string String { get; set; }
+
+            public object Object { get; set; }
+            public int ReadonlyInt { get; }
+            public int WriteonlyInt { private get; set; }
+        }
+
+        private Dictionary<string, object> DefaultTestEntity = new Dictionary<string, object>()
+        {
+            { nameof(TestEveryType.Integer), 1},
+            { nameof(TestEveryType.IntegerNullable), (int?)1},
+            { nameof(TestEveryType.Double), 1.1},
+            { nameof(TestEveryType.DateTime), new DateTime(1970, 1, 31)},
+            { nameof(TestEveryType.DateTimeNullable), new DateTime(1970, 1, 31)},
+            { nameof(TestEveryType.DateTimeOffset), (DateTimeOffset)new DateTime(1970, 1, 31)},
+            { nameof(TestEveryType.DateTimeOffsetNullable), (DateTimeOffset)new DateTime(1970, 1, 31)},
+            { nameof(TestEveryType.TimeSpan), new TimeSpan(1, 1, 1)},
+            { nameof(TestEveryType.TimeSpanNullable), new TimeSpan(1, 1, 1)},
+            { nameof(TestEveryType.String), "String"},
+            { nameof(TestEveryType.Object), new object()}
+        };
+
+        private void PrepareEntity(TestEveryType entity)
+        {
+            entity.CopyProperties(DefaultTestEntity);
+
+            entity.WriteonlyInt = 1;
+        }
+
+        private void CheckEquals(TestEveryType entity)
+        {
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.Integer)], entity.Integer);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.IntegerNullable)], entity.IntegerNullable);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.Double)], entity.Double);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.DateTime)], entity.DateTime);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.DateTimeNullable)], entity.DateTimeNullable);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.DateTimeOffset)], entity.DateTimeOffset);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.DateTimeOffsetNullable)], entity.DateTimeOffsetNullable);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.TimeSpan)], entity.TimeSpan);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.TimeSpanNullable)], entity.TimeSpanNullable);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.String)], entity.String);
+            Assert.Equal(DefaultTestEntity[nameof(TestEveryType.Object)], entity.Object);
+        }
+
         #endregion
 
         [Trait("Category", "ObjectExtensions")]
@@ -157,6 +213,24 @@ namespace UnitTest
 
             IValue value = new Test1().CopyProperties<IValue>(new { Value = 3 });
             Assert.Equal(3, value.Value);
+        }
+        [Trait("Category", "ObjectExtensions")]
+        [Fact(DisplayName = "CopyProperties2")]
+        public void CopyProperties2()
+        {
+            ObjectExtensionsConfiguration conf = ObjectExtensions.Configuration;
+            ObjectExtensions.Configuration = new ObjectExtensionsConfiguration.DelegateILCachingConfiguration();
+
+            TestEveryType tnode = new TestEveryType() { Id = 1 };
+            PrepareEntity(tnode);
+
+            CheckEquals(tnode);
+
+            ObjectExtensions.Configuration = new ObjectExtensionsConfiguration.DelegateCachingConfiguration();
+
+            CheckEquals(tnode);
+
+            ObjectExtensions.Configuration = conf;
         }
 
         [Trait("Category", "ObjectExtensions")]
