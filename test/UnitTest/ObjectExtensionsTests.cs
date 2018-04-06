@@ -199,7 +199,7 @@ namespace UnitTest
         {
             Test1 test = new Test1() { Value = 1, ValueString = "test", Test = new Test2(), Tests = new List<Test2>() { new Test2(), new Test2() } };
 
-            Assert.Equal(3, test.CopyProperties(new { Value = 3 }).Value);
+            Assert.Equal(3, test.CopyProperties(new { Value = (long)3 }).Value);
             Assert.Equal(3, test.Value);
 
             Assert.Equal(4, test.CopyProperties(new { Value = 4 }, p => p.ValueString = "ciao").Value);

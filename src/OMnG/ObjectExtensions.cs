@@ -418,7 +418,7 @@ namespace OMnG
                         Configuration.SetValue(pinfo,ext, d.ToLocalTime().DateTime);
                 }
                 else
-                    Configuration.SetValue(pinfo, ext, value);
+                    Configuration.SetValue(pinfo, ext, Convert.ChangeType(value, pinfo.PropertyType));
             }
         }
 

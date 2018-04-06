@@ -12,7 +12,7 @@ namespace OMnG
     {
         #region nested types
 
-        public class DefaultConfiguration : DelegateCachingConfiguration
+        public class DefaultConfiguration : DelegateILCachingConfiguration
         {
 
         }
