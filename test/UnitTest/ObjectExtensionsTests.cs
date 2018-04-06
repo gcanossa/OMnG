@@ -27,15 +27,6 @@ namespace UnitTest
             public int Value { get; set; }
             public string ValueString { get; set; }
         }
-        public class TestDateTime
-        {
-            public int Value { get; set; }
-            public string ValueString { get; set; }
-            public DateTime ValueDate { get; set; }
-            public DateTimeOffset ValueDateOff { get; set; }
-            public DateTime? ValueDateNull { get; set; }
-            public DateTimeOffset? ValueDateOffNull { get; set; }
-        }
 
         public class TestEveryType
         {
@@ -169,37 +160,14 @@ namespace UnitTest
 
             Assert.Equal(new string[] { "Value", "ValueString", "Test" }, test.ExludeCollectionTypesProperties().Keys);
         }
-
-        [Trait("Category", "ObjectExtensions")]
-        [Fact(DisplayName = "DateTime_Test")]
-        public void DateTime_Test()
-        {
-            DateTime now = DateTime.Now;
-            now = now.AddTicks(-(now.Ticks % TimeSpan.FromMilliseconds(1).Ticks));
-            TestDateTime test = new TestDateTime() { Value = 1, ValueString = "test", ValueDate = now, ValueDateOff =now, ValueDateNull = now, ValueDateOffNull = now};
-
-            var props = test.ToPropDictionary();
-
-            props["ValueDate"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
-            props["ValueDateOff"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
-            props["ValueDateNull"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
-            props["ValueDateOffNull"] = ((DateTimeOffset)now).ToUnixTimeMilliseconds();
-
-            test = test.CopyProperties(props);
-
-            Assert.Equal(now, test.ValueDate);
-            Assert.Equal(now, test.ValueDateOff);
-            Assert.Equal(now, test.ValueDateNull);
-            Assert.Equal(now, test.ValueDateOffNull);
-        }
-
+        
         [Trait("Category", "ObjectExtensions")]
         [Fact(DisplayName = "CopyProperties")]
         public void CopyProperties()
         {
             Test1 test = new Test1() { Value = 1, ValueString = "test", Test = new Test2(), Tests = new List<Test2>() { new Test2(), new Test2() } };
 
-            Assert.Equal(3, test.CopyProperties(new { Value = (long)3 }).Value);
+            Assert.Equal(3, test.CopyProperties(new { Value = 3 }).Value);
             Assert.Equal(3, test.Value);
 
             Assert.Equal(4, test.CopyProperties(new { Value = 4 }, p => p.ValueString = "ciao").Value);
@@ -218,19 +186,17 @@ namespace UnitTest
         [Fact(DisplayName = "CopyProperties2")]
         public void CopyProperties2()
         {
-            ObjectExtensionsConfiguration conf = ObjectExtensions.Configuration;
-            ObjectExtensions.Configuration = new ObjectExtensionsConfiguration.DelegateILCachingConfiguration();
-
             TestEveryType tnode = new TestEveryType() { Id = 1 };
             PrepareEntity(tnode);
 
-            CheckEquals(tnode);
-
-            ObjectExtensions.Configuration = new ObjectExtensionsConfiguration.DelegateCachingConfiguration();
-
-            CheckEquals(tnode);
-
-            ObjectExtensions.Configuration = conf;
+            using (ObjectExtensions.ConfigScope(new ObjectExtensionsConfiguration.DelegateILCachingConfiguration()))
+            {
+                CheckEquals(tnode);
+            }
+            using (ObjectExtensions.ConfigScope(new ObjectExtensionsConfiguration.DelegateCachingConfiguration()))
+            {
+                CheckEquals(tnode);
+            }
         }
 
         [Trait("Category", "ObjectExtensions")]

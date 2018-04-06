@@ -80,15 +80,15 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetLablelsCompress))]
         public void GetLablelsCompress()
         {
-            TypeExtensions.Configuration = new TypeExtensionsConfiguration.CompressConfiguration();
+            using (TypeExtensions.ConfigScope(new TypeExtensionsConfiguration.CompressConfiguration()))
+            {
 
-            List<string> tmp = TypeExtensions.GetLabels<ClassC>().ToList();
+                List<string> tmp = TypeExtensions.GetLabels<ClassC>().ToList();
 
-            tmp.ForEach(p => Assert.True(p.Length <= 32));
+                tmp.ForEach(p => Assert.True(p.Length <= 32));
 
-            Assert.True(tmp.GetTypesFromLabels().GetInstanceOfMostSpecific() is ClassC);
-
-            TypeExtensions.Configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
+                Assert.True(tmp.GetTypesFromLabels().GetInstanceOfMostSpecific() is ClassC);
+            }
         }
 
         [Trait("Category", nameof(TypeExtensionsTests))]

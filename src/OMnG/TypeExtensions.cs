@@ -8,10 +8,29 @@ namespace OMnG
 {
     public static class TypeExtensions
     {
-        private static object _lk = new object();
-        private static TypeExtensionsConfiguration _configuration = new TypeExtensionsConfiguration.DefaultConfiguration();
-        public static TypeExtensionsConfiguration Configuration { get { lock (_lk) { return _configuration; } } set { lock (_lk) { _configuration = value; } } }
-        
+        private static TypeExtensionsConfiguration DefaultConfiguration = new TypeExtensionsConfiguration.DefaultConfiguration();
+
+        [ThreadStatic]
+        internal static Stack<TypeExtensionsConfiguration> _configuration;
+        public static TypeExtensionsConfiguration Configuration
+        {
+            get
+            {
+                _configuration = _configuration ?? new Stack<TypeExtensionsConfiguration>();
+                if (_configuration.Count == 0)
+                    _configuration.Push(DefaultConfiguration);
+                return _configuration.Peek();
+            }
+        }
+        public static IDisposable ConfigScope(TypeExtensionsConfiguration configuration)
+        {
+            configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            _configuration.Push(configuration);
+
+            return new CustomDisposable(() => _configuration.Pop());
+        }
+
         public static string GetLablel(this object obj)
         {
             return GetLabel(obj?.GetType());
@@ -20,16 +39,14 @@ namespace OMnG
         {
             return GetLabel(typeof(T));
         }
-        public static string GetLabel(this Type type, TypeExtensionsConfiguration configuration = null)
+        public static string GetLabel(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
-
-            configuration = configuration ?? Configuration;
-
-            if (!configuration.FilterValidType(type))
+            
+            if (!Configuration.FilterValidType(type))
                 throw new ArgumentException($"The type is configured to be unusable", nameof(type));
 
-            return configuration.ToLabel(type);
+            return Configuration.ToLabel(type);
         }
 
         public static IEnumerable<string> GetLabels(this object obj)
@@ -40,16 +57,14 @@ namespace OMnG
         {
             return GetLabels(typeof(T));
         }
-        public static IEnumerable<string> GetLabels(this Type type, TypeExtensionsConfiguration configuration = null)
+        public static IEnumerable<string> GetLabels(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
-
-            configuration = configuration ?? Configuration;
-
+            
             HashSet<string> result = new HashSet<string>();
             result.Add(GetLabel(type));
 
-            foreach (Type item in configuration.GetInterfaces(type).Where(configuration.FilterValidType))
+            foreach (Type item in Configuration.GetInterfaces(type).Where(Configuration.FilterValidType))
             {
                 result.Add(GetLabel(item));
             }
@@ -57,21 +72,19 @@ namespace OMnG
             while (type != typeof(object) && !type.IsInterface)
             {
                 type = type.BaseType;
-                if (type != typeof(object) && configuration.FilterValidType(type))
+                if (type != typeof(object) && Configuration.FilterValidType(type))
                     result.Add(GetLabel(type));
             }
 
             return result;
         }
 
-        public static IEnumerable<Type> GetTypesFromLabels(this IEnumerable<string> labels, TypeExtensionsConfiguration configuration = null)
+        public static IEnumerable<Type> GetTypesFromLabels(this IEnumerable<string> labels)
         {
             if (labels == null)
                 throw new ArgumentNullException(nameof(labels));
-
-            configuration = configuration ?? Configuration;
-
-            return labels.Select(p => configuration.ToType(p));
+            
+            return labels.Select(p => Configuration.ToType(p));
         }
     }
 }

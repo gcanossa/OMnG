@@ -19,26 +19,10 @@ namespace OMnG
 
         public class DelegateILCachingConfiguration : ObjectExtensionsConfiguration
         {
-            private static Dictionary<Type, OpCode> ILTypeHash = new Dictionary<Type, OpCode>()
-                {
-                    { typeof(sbyte), OpCodes.Ldind_I1 },
-                    { typeof(byte), OpCodes.Ldind_U1 },
-                    { typeof(char), OpCodes.Ldind_U2 },
-                    { typeof(short), OpCodes.Ldind_I2 },
-                    { typeof(ushort), OpCodes.Ldind_U2 },
-                    { typeof(int), OpCodes.Ldind_I4 },
-                    { typeof(uint), OpCodes.Ldind_U4 },
-                    { typeof(long), OpCodes.Ldind_I8 },
-                    { typeof(ulong), OpCodes.Ldind_I8 },
-                    { typeof(bool), OpCodes.Ldind_I1 },
-                    { typeof(double), OpCodes.Ldind_R8 },
-                    { typeof(float), OpCodes.Ldind_R4 }
-                };
-
             private static Dictionary<PropertyInfo, Func<object, object>> Getters = new Dictionary<PropertyInfo, Func<object, object>>();
             private static Dictionary<PropertyInfo, Action<object, object>> Setters = new Dictionary<PropertyInfo, Action<object, object>>();
 
-            public override object GetValue(PropertyInfo property, object target)
+            protected override object GetValue(PropertyInfo property, object target)
             {
                 property = property ?? throw new ArgumentNullException(nameof(property));
                 target = target ?? throw new ArgumentNullException(nameof(target));
@@ -71,7 +55,7 @@ namespace OMnG
                 }
                 return Getters[property](target);
             }
-            public override void SetValue(PropertyInfo property, object target, object value)
+            protected override void SetValue(PropertyInfo property, object target, object value)
             {
                 property = property ?? throw new ArgumentNullException(nameof(property));
                 target = target ?? throw new ArgumentNullException(nameof(target));
@@ -108,7 +92,7 @@ namespace OMnG
             private static Dictionary<PropertyInfo, Func<object, object>> Getters = new Dictionary<PropertyInfo, Func<object, object>>();
             private static Dictionary<PropertyInfo, Action<object, object>> Setters = new Dictionary<PropertyInfo, Action<object, object>>();
 
-            public override object GetValue(PropertyInfo property, object target)
+            protected override object GetValue(PropertyInfo property, object target)
             {
                 property = property ?? throw new ArgumentNullException(nameof(property));
                 target = target ?? throw new ArgumentNullException(nameof(target));
@@ -142,7 +126,7 @@ namespace OMnG
                 }
                 return Getters[property](target);
             }
-            public override void SetValue(PropertyInfo property, object target, object value)
+            protected override void SetValue(PropertyInfo property, object target, object value)
             {
                 property = property ?? throw new ArgumentNullException(nameof(property));
                 target = target ?? throw new ArgumentNullException(nameof(target));
@@ -179,11 +163,11 @@ namespace OMnG
         }
         public class PureReflectionConfiguration : ObjectExtensionsConfiguration
         {
-            public override object GetValue(PropertyInfo property, object target)
+            protected override object GetValue(PropertyInfo property, object target)
             {
                 return property.GetValue(target);
             }
-            public override void SetValue(PropertyInfo property, object target, object value)
+            protected override void SetValue(PropertyInfo property, object target, object value)
             {
                 property.SetValue(target, value);
             }
@@ -191,7 +175,27 @@ namespace OMnG
 
         #endregion
         
-        public abstract object GetValue(PropertyInfo property, object target);
-        public abstract void SetValue(PropertyInfo property, object target, object value);
+        public object Get(PropertyInfo property, object target)
+        {
+            return ParseValue(property, target, GetValue(property, target));
+        }
+        protected abstract object GetValue(PropertyInfo property, object target);
+        public void Set(PropertyInfo property, object target, object value)
+        {
+            SetValue(property, target, ParseValue(property, target, value));
+        }
+        protected abstract void SetValue(PropertyInfo property, object target, object value);
+        protected virtual object ParseValue(PropertyInfo property, object target, object value)
+        {
+            if (value == null)
+                return ObjectExtensions.GetDefault(property.PropertyType);
+            else
+            {
+                if (!property.PropertyType.IsPrimitive)
+                    return value;
+                else
+                    return Convert.ChangeType(value, property.PropertyType);
+            }
+        }
     }
 }

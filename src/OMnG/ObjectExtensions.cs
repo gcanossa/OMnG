@@ -5,14 +5,35 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace OMnG
 {
     public static class ObjectExtensions
     {
-        private static object _lk = new object();
-        private static ObjectExtensionsConfiguration _configuration = new ObjectExtensionsConfiguration.DefaultConfiguration();
-        public static ObjectExtensionsConfiguration Configuration { get { lock (_lk) { return _configuration; } } set { lock (_lk) { _configuration = value; } } }
+        private static ObjectExtensionsConfiguration DefaultConfiguration = new ObjectExtensionsConfiguration.DefaultConfiguration();
+
+        [ThreadStatic]
+        internal static Stack<ObjectExtensionsConfiguration> _configuration;
+        public static ObjectExtensionsConfiguration Configuration
+        {
+            get
+            {
+                _configuration = _configuration ?? new Stack<ObjectExtensionsConfiguration>();
+                if (_configuration.Count == 0)
+                    _configuration.Push(DefaultConfiguration);
+                return _configuration.Peek();
+            }
+        }
+
+        public static IDisposable ConfigScope(ObjectExtensionsConfiguration configuration)
+        {
+            configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            _configuration.Push(configuration);
+
+            return new CustomDisposable(()=>_configuration.Pop());
+        }
 
         public static IEnumerable<string> ToPropertyNameCollection<T, R>(this Expression<Func<T, R>> ext) where T : class
         {
@@ -51,7 +72,7 @@ namespace OMnG
             if (typeof(IDictionary<string, object>).IsAssignableFrom(ext.GetType()))
                 throw new ArgumentException("ext is already a dictionary");
 
-            return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => Configuration.GetValue(p,ext));
+            return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => Configuration.Get(p,ext));
         }
         
         public static IDictionary<string, object> ExludeProperties<T>(this T ext, Expression<Func<T, object>> selector) where T : class
@@ -389,7 +410,7 @@ namespace OMnG
             if (!ext.HasPropery<P>(name))
                 throw new ArgumentException("Property not found.", nameof(name));
 
-            return (P)Configuration.GetValue(ext.GetType().GetProperty(name),ext);
+            return (P)Configuration.Get(ext.GetType().GetProperty(name),ext);
         }
 
         public static void SetPropValue<P>(this object ext, string name, P value)
@@ -397,29 +418,7 @@ namespace OMnG
             if (!ext.HasPropery<P>(name))
                 throw new ArgumentException("Property not found.", nameof(name));
 
-            ext.GetType().GetProperty(name).SetPropertyHelper(ext, value);
-        }
-
-        private static void SetPropertyHelper(this PropertyInfo pinfo, object ext, object value)
-        {
-            if (value == null)
-                Configuration.SetValue(pinfo, ext, GetDefault(pinfo.PropertyType));
-            else
-            {
-                if (IsDateTime(pinfo.PropertyType) && IsNumeric(value.GetType()))
-                {
-                    DateTimeOffset d = DateTimeOffset.FromUnixTimeMilliseconds((long)Convert.ChangeType(value, typeof(long)));
-
-                    if (pinfo.PropertyType.IsAssignableFrom(typeof(DateTimeOffset)))
-                        Configuration.SetValue(pinfo,ext, d.ToLocalTime());
-                    else
-                        Configuration.SetValue(pinfo,ext, d.ToLocalTime().DateTime);
-                }
-                else if (!pinfo.PropertyType.IsPrimitive)
-                    Configuration.SetValue(pinfo, ext, value);
-                else
-                    Configuration.SetValue(pinfo, ext, Convert.ChangeType(value, pinfo.PropertyType));
-            }
+            Configuration.Set(ext.GetType().GetProperty(name), ext, value);
         }
 
         public static T CopyProperties<T>(this T ext, IDictionary<string, object> from, Action<T> specialMappings = null) where T : class
@@ -434,7 +433,7 @@ namespace OMnG
             {
                 PropertyInfo pinfo = toType.GetProperty(kv.Key);
 
-                pinfo?.SetPropertyHelper(ext, kv.Value);
+                Configuration.Set(pinfo, ext, kv.Value);
             }
 
             specialMappings?.Invoke(ext);
@@ -453,7 +452,7 @@ namespace OMnG
             {
                 PropertyInfo pinfo = toType.GetProperty(finfo.Name);
 
-                pinfo?.SetPropertyHelper(ext, Configuration.GetValue(finfo,from));
+                Configuration.Set(pinfo, ext, Configuration.Get(finfo, from));
             }
 
             specialMappings?.Invoke(ext);
@@ -556,6 +555,18 @@ namespace OMnG
             type = type ?? throw new ArgumentNullException(nameof(Type));
             return type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateTime?) || type == typeof(DateTimeOffset?);
         }
+        public static bool IsTimeSpan(this object ext)
+        {
+            if (ext == null)
+                throw new ArgumentNullException(nameof(ext));
+
+            return IsTimeSpan(ext.GetType());
+        }
+        public static bool IsTimeSpan(Type type)
+        {
+            type = type ?? throw new ArgumentNullException(nameof(Type));
+            return type == typeof(TimeSpan) || type == typeof(TimeSpan?);
+        }
         public static bool IsNumeric(this object ext)
         {
             if (ext == null)
@@ -644,9 +655,9 @@ namespace OMnG
                 if (
                     tmp == null ||
                     pinfo.PropertyType != tmp.PropertyType ||
-                    (Configuration.GetValue(pinfo, included) == null && Configuration.GetValue(tmp, obj) != null) ||
-                    (Configuration.GetValue(pinfo, included) != null && Configuration.GetValue(tmp, obj) == null) ||
-                    (Configuration.GetValue(pinfo, included) != null && Configuration.GetValue(tmp, obj) != null && !Configuration.GetValue(pinfo, included).Equals(ObjectExtensions.Configuration.GetValue(tmp, obj))))
+                    (Configuration.Get(pinfo, included) == null && Configuration.Get(tmp, obj) != null) ||
+                    (Configuration.Get(pinfo, included) != null && Configuration.Get(tmp, obj) == null) ||
+                    (Configuration.Get(pinfo, included) != null && Configuration.Get(tmp, obj) != null && !Configuration.Get(pinfo, included).Equals(ObjectExtensions.Configuration.Get(tmp, obj))))
                     return false;
             }
             return true;
