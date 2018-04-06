@@ -406,9 +406,7 @@ namespace OMnG
                 Configuration.SetValue(pinfo, ext, GetDefault(pinfo.PropertyType));
             else
             {
-                if (!pinfo.PropertyType.IsValueType)
-                    Configuration.SetValue(pinfo,ext, value);
-                else if (IsDateTime(pinfo.PropertyType) && IsNumeric(value.GetType()))
+                if (IsDateTime(pinfo.PropertyType) && IsNumeric(value.GetType()))
                 {
                     DateTimeOffset d = DateTimeOffset.FromUnixTimeMilliseconds((long)Convert.ChangeType(value, typeof(long)));
 
@@ -417,6 +415,8 @@ namespace OMnG
                     else
                         Configuration.SetValue(pinfo,ext, d.ToLocalTime().DateTime);
                 }
+                else if (!pinfo.PropertyType.IsPrimitive)
+                    Configuration.SetValue(pinfo, ext, value);
                 else
                     Configuration.SetValue(pinfo, ext, Convert.ChangeType(value, pinfo.PropertyType));
             }
