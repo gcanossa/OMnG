@@ -29,10 +29,24 @@ namespace OMnG
         public static IDisposable ConfigScope(ObjectExtensionsConfiguration configuration)
         {
             configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = _configuration ?? new Stack<ObjectExtensionsConfiguration>();
 
             _configuration.Push(configuration);
 
             return new CustomDisposable(()=>_configuration.Pop());
+        }
+
+        public static object Scope<T>(this T ext, ObjectExtensionsConfiguration configuration, Func<T, object> action)
+            where T : class
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            action = action ?? throw new ArgumentNullException(nameof(action));
+
+            using (ConfigScope(configuration))
+            {
+                return action(ext);
+            }
         }
 
         public static IEnumerable<string> ToPropertyNameCollection<T, R>(this Expression<Func<T, R>> ext) where T : class

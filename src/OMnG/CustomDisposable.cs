@@ -4,7 +4,7 @@ using System.Text;
 
 namespace OMnG
 {
-    internal class CustomDisposable : IDisposable
+    public class CustomDisposable : IDisposable
     {
         private Action _dispose;
         public CustomDisposable(Action dispose)

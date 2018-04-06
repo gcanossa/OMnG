@@ -25,10 +25,23 @@ namespace OMnG
         public static IDisposable ConfigScope(TypeExtensionsConfiguration configuration)
         {
             configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = _configuration ?? new Stack<TypeExtensionsConfiguration>();
 
             _configuration.Push(configuration);
 
             return new CustomDisposable(() => _configuration.Pop());
+        }
+        public static object Scope<T>(this T ext, TypeExtensionsConfiguration configuration, Func<T, object> action)
+            where T : class
+        {
+            ext = ext ?? throw new ArgumentNullException(nameof(ext));
+            configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            action = action ?? throw new ArgumentNullException(nameof(action));
+
+            using (ConfigScope(configuration))
+            {
+                return action(ext);
+            }
         }
 
         public static string GetLablel(this object obj)
