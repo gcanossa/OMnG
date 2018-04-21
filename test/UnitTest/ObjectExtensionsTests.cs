@@ -156,9 +156,9 @@ namespace UnitTest
             Assert.Equal(new string[] { "ValueString", "Test", "Tests" }, test.ExludeTypesProperties(typeof(int)).Keys);
 
             Assert.Equal(new string[] { "Test", "Tests" }, test.ExludePrimitiveTypesProperties().Keys);
-            Assert.Equal(new string[] { "Tests" }, test.SelectCollectionTypesProperties().Keys);
+            Assert.Equal(new string[] { "Tests" }, test.SelectMatchingTypesProperties(p=>p.IsCollection()).Keys);
 
-            Assert.Equal(new string[] { "Value", "ValueString", "Test" }, test.ExludeCollectionTypesProperties().Keys);
+            Assert.Equal(new string[] { "Value", "ValueString", "Test" }, test.ExludeMatchingTypesProperties(p=>p.IsCollection()).Keys);
         }
         
         [Trait("Category", "ObjectExtensions")]
@@ -208,6 +208,18 @@ namespace UnitTest
             IDictionary<string, object> r1 = test.MergeWith(new { Value = 4, Prova = "lui" });
 
             Assert.Equal(new Dictionary<string, object>() { { "Value", 4 }, { "ValueString", "prova" }, { "Prova", "lui" } }, r1);
+        }
+
+        [Trait("Category", "ObjectExtensions")]
+        [Fact(DisplayName = nameof(IsPrimitive))]
+        public void IsPrimitive()
+        {
+            Test2 test = new Test2();
+
+            Assert.True(3.IsPrimitive());
+            Assert.False(test.IsPrimitive());
+            Assert.True(typeof(int).IsPrimitive());
+            Assert.False(typeof(Test2).IsPrimitive());
         }
     }
 }

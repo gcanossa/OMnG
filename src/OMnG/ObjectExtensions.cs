@@ -11,6 +11,7 @@ namespace OMnG
 {
     public static class ObjectExtensions
     {
+        #region scoping
         private static ObjectExtensionsConfiguration DefaultConfiguration = new ObjectExtensionsConfiguration.DefaultConfiguration();
 
         [ThreadStatic]
@@ -48,6 +49,8 @@ namespace OMnG
                 return action(ext);
             }
         }
+
+        #endregion
 
         public static IEnumerable<string> ToPropertyNameCollection<T, R>(this Expression<Func<T, R>> ext) where T : class
         {
@@ -88,7 +91,9 @@ namespace OMnG
 
             return ext.GetType().GetProperties().Where(p => p.CanRead).ToDictionary(p => p.Name, p => Configuration.Get(p,ext));
         }
-        
+
+        #region ExcludeProperties
+
         public static IDictionary<string, object> ExludeProperties<T>(this T ext, Expression<Func<T, object>> selector) where T : class
         {
             if (ext == null)
@@ -141,6 +146,9 @@ namespace OMnG
             return ext.Where(p => !properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
         }
 
+        #endregion
+
+        #region specific ExcludeProperties
         public static IDictionary<string, object> ExludePrimitiveTypesProperties<T>(this T ext) where T : class
         {
             if (ext == null)
@@ -165,14 +173,15 @@ namespace OMnG
                 .Where(p => p.Value != null)
                 .Where(p => !p.Value.GetType().IsValueType && p.Value.GetType() != typeof(string)).ToDictionary(p => p.Key, p => p.Value);
         }
-        public static IDictionary<string, object> ExludeCollectionTypesProperties<T>(this T ext) where T : class
+        public static IDictionary<string, object> ExludeMatchingTypesProperties<T>(this T ext, Func<Type, bool> filter) where T : class
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
+            filter = filter ?? throw new ArgumentNullException(nameof(filter));
 
             Dictionary<string, object> result = new Dictionary<string, object>();
             foreach (string item in typeof(T).GetProperties()
-                .Where(p => !IsCollection(p.PropertyType))
+                .Where(p => !filter(p.PropertyType))
                 .Select(p => p.Name))
             {
                 result.Add(item, ext.GetPropValue(item));
@@ -180,14 +189,14 @@ namespace OMnG
 
             return result;
         }
-        public static IDictionary<string, object> ExludeCollectionTypesProperties(this IDictionary<string, object> ext)
+        public static IDictionary<string, object> ExludeMatchingTypesProperties(this IDictionary<string, object> ext, Func<Type, bool> filter)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
+            filter = filter ?? throw new ArgumentNullException(nameof(filter));
 
             return ext
-                .Where(p => p.Value != null)
-                .Where(p => !IsCollection(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
+                .Where(p => p.Value == null || !filter(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
         public static IDictionary<string, object> ExludeTypesProperties<T>(this T ext, params Type[] types) where T : class
         {
@@ -228,6 +237,9 @@ namespace OMnG
 
             return result;
         }
+        #endregion
+
+        #region SelectProperties
 
         public static IDictionary<string, object> SelectProperties<T>(this T ext, Expression<Func<T, object>> selector) where T : class
         {
@@ -281,6 +293,9 @@ namespace OMnG
             return ext.Where(p => properties.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
         }
 
+        #endregion
+
+        #region specific SelectProperties
         public static IDictionary<string, object> SelectPrimitiveTypesProperties<T>(this T ext) where T : class
         {
             if (ext == null)
@@ -304,14 +319,15 @@ namespace OMnG
             return ext
                 .Where(p => p.Value == null || IsPrimitive(p.Value)).ToDictionary(p=>p.Key, p=>p.Value);
         }
-        public static IDictionary<string, object> SelectCollectionTypesProperties<T>(this T ext) where T : class
+        public static IDictionary<string, object> SelectMatchingTypesProperties<T>(this T ext, Func<Type, bool> filter) where T : class
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
+            filter = filter ?? throw new ArgumentNullException(nameof(filter));
 
             Dictionary<string, object> result = new Dictionary<string, object>();
             foreach (string item in typeof(T).GetProperties()
-                .Where(p => IsCollection(p.PropertyType))
+                .Where(p => filter(p.PropertyType))
                 .Select(p => p.Name))
             {
                 result.Add(item, ext.GetPropValue(item));
@@ -319,13 +335,14 @@ namespace OMnG
 
             return result;
         }
-        public static IDictionary<string, object> SelectCollectionTypesProperties(this IDictionary<string, object> ext)
+        public static IDictionary<string, object> SelectMatchingTypesProperties(this IDictionary<string, object> ext, Func<Type, bool> filter)
         {
             if (ext == null)
                 throw new ArgumentNullException(nameof(ext));
+            filter = filter ?? throw new ArgumentNullException(nameof(filter));
 
             return ext
-                .Where(p => p.Value==null || IsCollection(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
+                .Where(p => p.Value==null || filter(p.Value.GetType())).ToDictionary(p => p.Key, p => p.Value);
         }
         public static IDictionary<string, object> SelectTypesProperties<T>(this T ext, params Type[] types) where T : class
         {
@@ -365,7 +382,9 @@ namespace OMnG
 
             return result;
         }
+        #endregion
 
+        #region ValueCopying
         public static IDictionary<string, object> MergeWith<T>(this T ext, Func<T, object> selector) where T : class
         {
             if (ext == null)
@@ -473,8 +492,9 @@ namespace OMnG
 
             return ext;
         }
+        #endregion
 
-        public static object GetDefault(Type type)
+        public static object GetDefault(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(Type));
             return type.IsValueType ? Activator.CreateInstance(type) : null;
@@ -496,12 +516,12 @@ namespace OMnG
 
             return Activator.CreateInstance(type);
         }
-        public static System.Collections.IList GetListOf(Type type)
+        public static System.Collections.IList GetListOf(this Type type)
         {
             Type lst = typeof(List<>).MakeGenericType(type);
             return (System.Collections.IList)Activator.CreateInstance(lst);
         }
-        public static object GetInstanceOf(Type type, IDictionary<string, object> param)
+        public static object GetInstanceOf(this Type type, IDictionary<string, object> param)
         {
             type = type ?? throw new ArgumentNullException(nameof(type));
             param = param ?? new Dictionary<string, object>();
@@ -564,7 +584,7 @@ namespace OMnG
 
             return IsDateTime(ext.GetType());
         }
-        public static bool IsDateTime(Type type)
+        public static bool IsDateTime(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(Type));
             return type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateTime?) || type == typeof(DateTimeOffset?);
@@ -576,7 +596,7 @@ namespace OMnG
 
             return IsTimeSpan(ext.GetType());
         }
-        public static bool IsTimeSpan(Type type)
+        public static bool IsTimeSpan(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(Type));
             return type == typeof(TimeSpan) || type == typeof(TimeSpan?);
@@ -588,27 +608,12 @@ namespace OMnG
 
             return IsNumeric(ext.GetType());
         }
-        public static bool IsNumeric(Type type)
+        public static bool IsNumeric(this Type type)
         {
             type = type ?? throw new ArgumentNullException(nameof(Type));
             return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
         }
-
-        public static bool IsCollection(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsCollection(ext.GetType());
-        }
-        public static bool IsCollection(Type type)
-        {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-
-            return type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
-        }
-        
+                
         public static bool IsPrimitive(this object ext)
         {
             if (ext == null)
@@ -616,7 +621,7 @@ namespace OMnG
 
             return IsPrimitive(ext.GetType());
         }
-        public static bool IsPrimitive(Type type)
+        public static bool IsPrimitive(this Type type)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -635,25 +640,7 @@ namespace OMnG
                 (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && IsPrimitive(type.GetGenericArguments()[0]))
                 ;
         }
-
-        public static bool IsEnumerable(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsEnumerable(ext.GetType());
-        }
-        public static bool IsEnumerable(Type type)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(type));
-            return type.Name == "IEnumerable`1";
-        }
-
-        public static bool HasEnumerable(Type type)
-        {
-            return TypeExtensions.Configuration.GetInterfaces(type).Any(p => IsEnumerable(p));
-        }
-
+        
         public static bool CheckObjectInclusion(this object obj, object included)
         {
             if (obj == null)
@@ -675,51 +662,6 @@ namespace OMnG
                     return false;
             }
             return true;
-        }
-        
-        public static Type GetElementType(Type seqType)
-        {
-            Type ienum = FindIEnumerable(seqType);
-            if (ienum == null) return seqType;
-            return ienum.GetGenericArguments()[0];
-        }
-        public static Type FindIEnumerable(Type seqType)
-        {
-            if (seqType == null || seqType == typeof(string))
-                return null;
-
-            if (seqType.IsArray)
-                return typeof(IEnumerable<>).MakeGenericType(seqType.GetElementType());
-
-            if (seqType.IsGenericType)
-            {
-                foreach (Type arg in seqType.GetGenericArguments())
-                {
-                    Type ienum = typeof(IEnumerable<>).MakeGenericType(arg);
-                    if (ienum.IsAssignableFrom(seqType))
-                    {
-                        return ienum;
-                    }
-                }
-            }
-
-            Type[] ifaces = TypeExtensions.Configuration.GetInterfaces(seqType).ToArray();
-            if (ifaces != null && ifaces.Length > 0)
-            {
-                foreach (Type iface in ifaces)
-                {
-                    Type ienum = FindIEnumerable(iface);
-                    if (ienum != null) return ienum;
-                }
-            }
-
-            Type baseType = seqType.BaseType;
-            if (baseType != null && baseType != typeof(object))
-            {
-                return FindIEnumerable(baseType);
-            }
-
-            return null;
         }
     }
 }
