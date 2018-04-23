@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -88,18 +89,79 @@ namespace OMnG
             TypeHolder extHolder =  ext ?? throw new ArgumentNullException(nameof(ext));
             referenceType = referenceType ?? throw new ArgumentNullException(nameof(referenceType));
 
-            if (referenceType <= extHolder)
+            if ((referenceType.IsValueType || referenceType == typeof(string)) && (ext.IsValueType || ext == typeof(string)))
                 return true;
-            else if(referenceType.IsGenericType)
+            else if (referenceType <= extHolder)
+                return true;
+            else if (referenceType.IsGenericType)
             {
                 List<Func<TypeHolder, bool>> constranints = new List<Func<TypeHolder, bool>>();
                 foreach (TypeHolder item in referenceType.GetGenericArgumentsOf(referenceType.GetGenericTypeDefinition()).First())
                 {
-                    constranints.Add(p=>item < p);
+                    constranints.Add(p => p.Type.IsConvertibleTo(item.Type));
                 }
                 return ext.IsOfGenericType(referenceType.GetGenericTypeDefinition(), constranints.ToArray());
             }
             return false;
+        }
+
+        public static object ConvertTo<T>(this object ext)
+        {
+            return ConvertTo(ext, typeof(T));
+        }
+        public static object ConvertTo(this object ext, Type toType)
+        {
+            if (ext == null)
+                return ObjectExtensions.GetDefault(toType);
+            else if (toType == typeof(string))
+                return ext.ToString();
+            else if (ext.GetType().IsConvertibleTo(toType))
+            {
+                if (toType.IsEnum)
+                    return Enum.Parse(toType, (string)ext.ConvertTo<string>());
+                else if (toType.IsValueType)
+                    return Convert.ChangeType(ext, toType);
+                else if ((TypeHolder)toType < ext.GetType())
+                    return ext;
+
+                TypeHolder[] types = ext.GetType()
+                    .GetGenericArgumentsOf(typeof(IEnumerable<>))
+                    .Where(p => p.Any(t => t.Type.IsConvertibleTo(toType
+                    .GetGenericArguments()[0])))
+                    .FirstOrDefault();
+
+                if (types != null)
+                {
+                    if (types[0].Type.IsOfGenericType(typeof(KeyValuePair<,>)))
+                    {
+                        Type[] kvTypes = toType.GetGenericArgumentsOf(typeof(IEnumerable<>)).First()[0].Type
+                            .GetGenericArgumentsOf(typeof(KeyValuePair<,>)).First().Select(p=>p.Type).ToArray();
+
+                        IDictionary res = (IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(kvTypes));
+                        foreach (object item in ext as IEnumerable)
+                        {
+                            res.Add(
+                                types[0].Type.GetProperty("Key").GetValue(item).ConvertTo(kvTypes[0]),
+                                types[0].Type.GetProperty("Value").GetValue(item).ConvertTo(kvTypes[1])
+                                );
+                        }
+                        return res;
+                    }
+                    else
+                    {
+                        IList res = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(types.Select(p => p.Type).ToArray()));
+                        foreach (object item in ext as IEnumerable)
+                        {
+                            res.Add(item.ConvertTo(types[0].Type));
+                        }
+                        return res;
+                    }
+                }
+                else
+                    throw new InvalidCastException($"Unable to convert object of type {ext.GetType().FullName} to type {toType.FullName}");
+            }
+            else
+                throw new InvalidCastException($"Unable to convert object of type {ext.GetType().FullName} to type {toType.FullName}");
         }
     }
 }

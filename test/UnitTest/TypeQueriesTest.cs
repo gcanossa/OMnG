@@ -45,9 +45,9 @@ namespace UnitTest
         }
         public class SubSubClass1 : SubClass1, InterfaceAll, ICollection<SubClass1>, ICollection<InterfaceAll>
         {
-            public int Count => throw new NotImplementedException();
+            public int Count => 0;
 
-            public bool IsReadOnly => throw new NotImplementedException();
+            public bool IsReadOnly => false;
 
             public void Add(SubClass1 item)
             {
@@ -86,7 +86,7 @@ namespace UnitTest
 
             public IEnumerator<SubClass1> GetEnumerator()
             {
-                throw new NotImplementedException();
+                return new List<SubClass1>().GetEnumerator();
             }
 
             public bool Remove(SubClass1 item)
@@ -101,12 +101,12 @@ namespace UnitTest
 
             IEnumerator IEnumerable.GetEnumerator()
             {
-                throw new NotImplementedException();
+                return new List<SubClass1>().GetEnumerator();
             }
 
             IEnumerator<InterfaceAll> IEnumerable<InterfaceAll>.GetEnumerator()
             {
-                throw new NotImplementedException();
+                return new List<InterfaceAll>().GetEnumerator();
             }
         }
 
@@ -182,6 +182,42 @@ namespace UnitTest
 
             Assert.Equal(typeof(AbstractClass), typeof(SubSubClass1).AsTypeEnumerable().First(p=>p.Type.IsAbstract && !p.Type.IsInterface));
             Assert.Equal(1, typeof(SubSubClass1).AsTypeEnumerable().Count(p => p.Type.IsAbstract && !p.Type.IsInterface));
+
+            Assert.True(typeof(int).IsConvertibleTo(typeof(double)));
+        }
+
+        [Trait("Category", nameof(TypeQueriesTest))]
+        [Fact(DisplayName = nameof(TypeHolderConvertTo))]
+        public void TypeHolderConvertTo()
+        {
+            object nothing = null;
+
+            Assert.Equal(2, 2.2.ConvertTo<int>());
+            Assert.Equal(0, TestEnum.A.ConvertTo<int>());
+            Assert.Equal(TestEnum.C, 2.ConvertTo<TestEnum>());
+            Assert.Equal(default(float), nothing.ConvertTo<float>());
+
+            List<SubSubClass1> values = new List<SubSubClass1>() { new SubSubClass1(), new SubSubClass1() };
+            List<SubClass1> newValues = ((IEnumerable<SubClass1>)values.ConvertTo<IEnumerable<SubClass1>>()).ToList();
+            Assert.Equal(values[0], newValues[0]);
+            Assert.Equal(values[1], newValues[1]);
+
+            Dictionary<int, SubSubClass1> dict = new Dictionary<int, SubSubClass1>() { { 0, new SubSubClass1() }, { 1, new SubSubClass1() } };
+            Dictionary<string, SubClass1> newDict = (Dictionary<string, SubClass1>)dict.ConvertTo<Dictionary<string, SubClass1>>();
+            Assert.Equal(dict[0], newDict["0"]);
+            Assert.Equal(dict[1], newDict["1"]);
+
+            Dictionary<string, SubClass1> newDict2 = ((IEnumerable<KeyValuePair<string, SubClass1>>)dict
+                .ConvertTo<IEnumerable<KeyValuePair<string, SubClass1>>>())
+                .ToDictionary(p=>p.Key, p=>p.Value);
+            Assert.Equal(dict[0], newDict2["0"]);
+            Assert.Equal(dict[1], newDict2["1"]);
+
+            Dictionary<string, SubClass1> newDict3 = ((IDictionary<string, SubClass1>)dict
+                .ConvertTo<IDictionary<string, SubClass1>>())
+                .ToDictionary(p => p.Key, p => p.Value);
+            Assert.Equal(dict[0], newDict3["0"]);
+            Assert.Equal(dict[1], newDict3["1"]);
         }
     }
 }
