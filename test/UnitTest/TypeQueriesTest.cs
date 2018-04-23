@@ -197,6 +197,11 @@ namespace UnitTest
             Assert.Equal(TestEnum.C, 2.ConvertTo<TestEnum>());
             Assert.Equal(default(float), nothing.ConvertTo<float>());
 
+            Assert.True(typeof(int).IsConvertibleTo(typeof(int?)));
+            Assert.Equal(2, ((double?)2.2).ConvertTo<int>());
+            Assert.True(typeof(int?).IsConvertibleTo(typeof(int)));
+            Assert.Equal(2, (2.2).ConvertTo<int?>());
+
             List<SubSubClass1> values = new List<SubSubClass1>() { new SubSubClass1(), new SubSubClass1() };
             List<SubClass1> newValues = ((IEnumerable<SubClass1>)values.ConvertTo<IEnumerable<SubClass1>>()).ToList();
             Assert.Equal(values[0], newValues[0]);

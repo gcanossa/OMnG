@@ -303,7 +303,7 @@ namespace OMnG
 
             Dictionary<string, object> result = new Dictionary<string, object>();
             foreach (string item in typeof(T).GetProperties()
-                .Where(p => IsPrimitive(p.PropertyType))
+                .Where(p => p.PropertyType.IsPrimitive())
                 .Select(p => p.Name))
             {
                 result.Add(item, ext.GetPropValue(item));
@@ -317,7 +317,7 @@ namespace OMnG
                 throw new ArgumentNullException(nameof(ext));
 
             return ext
-                .Where(p => p.Value == null || IsPrimitive(p.Value)).ToDictionary(p=>p.Key, p=>p.Value);
+                .Where(p => p.Value == null || p.Value.IsPrimitive()).ToDictionary(p=>p.Key, p=>p.Value);
         }
         public static IDictionary<string, object> SelectMatchingTypesProperties<T>(this T ext, Func<Type, bool> filter) where T : class
         {
@@ -494,174 +494,5 @@ namespace OMnG
         }
         #endregion
 
-        public static object GetDefault(this Type type)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(Type));
-            return type.IsValueType ? Activator.CreateInstance(type) : null;
-        }
-
-        public static object GetInstanceOfMostSpecific(this IEnumerable<Type> types)
-        {
-            types = types ?? throw new ArgumentNullException(nameof(types));
-
-            Type type = null;
-            foreach (Type t in types.Where(p => !p.IsInterface && !p.IsAbstract && p.GetConstructor(new Type[0]) != null))
-            {
-                if (type == null || type.IsAssignableFrom(t))
-                    type = t;
-            }
-
-            if (type == null)
-                return null;
-
-            return Activator.CreateInstance(type);
-        }
-        public static System.Collections.IList GetListOf(this Type type)
-        {
-            Type lst = typeof(List<>).MakeGenericType(type);
-            return (System.Collections.IList)Activator.CreateInstance(lst);
-        }
-        public static object GetInstanceOf(this Type type, IDictionary<string, object> param)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(type));
-            param = param ?? new Dictionary<string, object>();
-
-            if (IsPrimitive(type))
-            {
-                return Convert.ChangeType(param.First().Value, type);
-            }
-            else
-            {
-                object[] args = GetParamsForConstructor(type, param);
-                if (args != null)
-                    return args.Length == 0 ?
-                            Activator.CreateInstance(type, args).CopyProperties(param) :
-                            Activator.CreateInstance(type, args);
-            }
-
-            throw new Exception("Unable to build an object of the desired type");
-        }
-        private static object[] GetParamsForConstructor(Type type, IDictionary<string, object> param)
-        {
-            if (type.GetConstructor(new Type[0]) != null)
-                return new object[0];
-            else
-            {
-                List<object> result = new List<object>();
-                foreach (ConstructorInfo item in type.GetConstructors())
-                {
-                    List<ParameterInfo> tmp = item.GetParameters().ToList();
-
-                    result.Clear();
-                    foreach (ParameterInfo pinfo in tmp.ToList())
-                    {
-                        if (param.ContainsKey(pinfo.Name))
-                        {
-                            tmp.Remove(pinfo);
-                            if (IsPrimitive(pinfo.ParameterType))
-                                result.Add(Convert.ChangeType(param[pinfo.Name], pinfo.ParameterType));
-                            else
-                                result.Add(param[pinfo.Name]);
-                        }
-                    }
-                    if (tmp.Count == 0)
-                        return result.ToArray();
-                }
-
-                return null;
-            }
-        }
-
-        public static DateTime TruncateDateToTimeslice(this DateTime dateTime, TimeSpan timeSpan)
-        {
-            if (timeSpan == TimeSpan.Zero) return dateTime; // Or could throw an ArgumentException
-            return dateTime.AddTicks(-(dateTime.Ticks % timeSpan.Ticks));
-        }
-        public static bool IsDateTime(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsDateTime(ext.GetType());
-        }
-        public static bool IsDateTime(this Type type)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(Type));
-            return type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(DateTime?) || type == typeof(DateTimeOffset?);
-        }
-        public static bool IsTimeSpan(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsTimeSpan(ext.GetType());
-        }
-        public static bool IsTimeSpan(this Type type)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(Type));
-            return type == typeof(TimeSpan) || type == typeof(TimeSpan?);
-        }
-        public static bool IsNumeric(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsNumeric(ext.GetType());
-        }
-        public static bool IsNumeric(this Type type)
-        {
-            type = type ?? throw new ArgumentNullException(nameof(Type));
-            return type.IsPrimitive && type != typeof(char) && type != typeof(bool);
-        }
-                
-        public static bool IsPrimitive(this object ext)
-        {
-            if (ext == null)
-                throw new ArgumentNullException(nameof(ext));
-
-            return IsPrimitive(ext.GetType());
-        }
-        public static bool IsPrimitive(this Type type)
-        {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-            return
-                type.IsPrimitive ||
-                new Type[] {
-                    typeof(Enum),
-                    typeof(String),
-                    typeof(Decimal),
-                    typeof(DateTime),
-                    typeof(DateTimeOffset),
-                    typeof(TimeSpan),
-                    typeof(Guid)
-                }.Contains(type) ||
-                Convert.GetTypeCode(type) != TypeCode.Object ||
-                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) && IsPrimitive(type.GetGenericArguments()[0]))
-                ;
-        }
-        
-        public static bool CheckObjectInclusion(this object obj, object included)
-        {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-
-            if (included == null)
-                return false;
-
-            Type type = obj.GetType();
-            foreach (PropertyInfo pinfo in included.GetType().GetProperties().Where(p => p.CanRead))
-            {
-                PropertyInfo tmp = type.GetProperty(pinfo.Name);
-                if (
-                    tmp == null ||
-                    pinfo.PropertyType != tmp.PropertyType ||
-                    (Configuration.Get(pinfo, included) == null && Configuration.Get(tmp, obj) != null) ||
-                    (Configuration.Get(pinfo, included) != null && Configuration.Get(tmp, obj) == null) ||
-                    (Configuration.Get(pinfo, included) != null && Configuration.Get(tmp, obj) != null && !Configuration.Get(pinfo, included).Equals(ObjectExtensions.Configuration.Get(tmp, obj))))
-                    return false;
-            }
-            return true;
-        }
     }
 }

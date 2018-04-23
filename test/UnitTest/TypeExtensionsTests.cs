@@ -127,9 +127,9 @@ namespace UnitTest
             ClassNotA na = new ClassNotA();
             IInterfaceA ia = null;
 
-            Assert.True(c.CheckObjectInclusion(a));
-            Assert.False(c.CheckObjectInclusion(ia));
-            Assert.False(c.CheckObjectInclusion(na));
+            Assert.True(c.DoesInclude(a));
+            Assert.False(c.DoesInclude(ia));
+            Assert.False(c.DoesInclude(na));
         }
 
         [Trait("Category", nameof(TypeExtensionsTests))]

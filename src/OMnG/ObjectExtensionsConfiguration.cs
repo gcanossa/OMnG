@@ -30,6 +30,9 @@ namespace OMnG
                 if (!property.CanRead)
                     throw new ArgumentException("The property cannot be read.", nameof(property));
 
+                if (property.DeclaringType.IsValueType)
+                    return property.GetValue(target);
+
                 if (!Getters.ContainsKey(property))
                 {
                     MethodInfo targetGetMethod = property.GetGetMethod(true);
@@ -62,6 +65,9 @@ namespace OMnG
 
                 if (!property.CanWrite)
                     throw new ArgumentException("The property cannot be set.", nameof(property));
+
+                if (property.DeclaringType.IsValueType)
+                    property.SetValue(target, value);
 
                 if (!Setters.ContainsKey(property))
                 {
@@ -100,6 +106,9 @@ namespace OMnG
                 if (!property.CanRead)
                     throw new ArgumentException("The property cannot be read.", nameof(property));
 
+                if (property.DeclaringType.IsValueType)
+                    return property.GetValue(target);
+
                 if (!Getters.ContainsKey(property))
                 {
                     Delegate d = Delegate.CreateDelegate(
@@ -133,6 +142,9 @@ namespace OMnG
 
                 if (!property.CanWrite)
                     throw new ArgumentException("The property cannot be set.", nameof(property));
+
+                if (property.DeclaringType.IsValueType)
+                    property.SetValue(target, value);
 
                 if (!Setters.ContainsKey(property))
                 {
@@ -188,7 +200,7 @@ namespace OMnG
         protected virtual object ParseValue(PropertyInfo property, object target, object value)
         {
             if (value == null)
-                return ObjectExtensions.GetDefault(property.PropertyType);
+                return property.PropertyType.GetDefault();
             else
             {
                 if (!property.PropertyType.IsPrimitive)
