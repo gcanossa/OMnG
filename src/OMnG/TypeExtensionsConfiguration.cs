@@ -11,6 +11,11 @@ namespace OMnG
     {
         #region nested types
 
+        public sealed class UnknowType : Object
+        {
+
+        }
+
         public class DefaultConfiguration : TypeExtensionsConfiguration
         {
             protected override string GetLabel(Type type)
@@ -83,10 +88,16 @@ namespace OMnG
         {
             ImportNewAssemblies();
 
-            if (!TypeLabels.ContainsKey(label))
-                ManageType(label, GetLabelType(label));
+            Type type = GetLabelType(label);
+            if (type == null)
+                return typeof(UnknowType);
+            else
+            {
+                if (!TypeLabels.ContainsKey(label))
+                    ManageType(label, type);
 
-            return TypeLabels[label];
+                return TypeLabels[label];
+            }
         }
 
         protected abstract string GetLabel(Type type);

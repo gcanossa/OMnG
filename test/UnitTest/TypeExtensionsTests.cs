@@ -105,6 +105,22 @@ namespace UnitTest
                 typeof(IInterfaceB),
                 typeof(AbstractClass)
             }, types);
+
+            List<string> labels2 = new List<string>();
+            labels2.AddRange(labels);
+            labels2.Add("Pippo");
+            labels2.Add("Pluto");
+            types = labels2.GetTypesFromLabels();
+
+            Assert.Equal(new Type[]
+            {
+                typeof(ClassC),
+                typeof(IInterfaceC),
+                typeof(IInterfaceA),
+                typeof(IInterfaceB),
+                typeof(AbstractClass),
+                typeof(TypeExtensionsConfiguration.UnknowType)
+            }, types);
         }
         
         [Trait("Category", nameof(TypeExtensionsTests))]

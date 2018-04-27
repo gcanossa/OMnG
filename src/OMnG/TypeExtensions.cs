@@ -97,7 +97,7 @@ namespace OMnG
             if (labels == null)
                 throw new ArgumentNullException(nameof(labels));
             
-            return labels.Select(p => Configuration.ToType(p));
+            return labels.Select(p => Configuration.ToType(p)).Distinct();
         }
     }
 }
