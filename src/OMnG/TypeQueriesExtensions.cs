@@ -176,7 +176,7 @@ namespace OMnG
             types = types ?? throw new ArgumentNullException(nameof(types));
 
             Type type = null;
-            foreach (Type t in types.Where(p => !p.IsInterface && !p.IsAbstract && p.GetConstructor(new Type[0]) != null))
+            foreach (Type t in types.Where(p => !p.IsInterface && !p.IsAbstract && p!=typeof(TypeExtensionsConfiguration.UnknownType) && p.GetConstructor(new Type[0]) != null))
             {
                 if (type == null || type.IsAssignableFrom(t))
                     type = t;

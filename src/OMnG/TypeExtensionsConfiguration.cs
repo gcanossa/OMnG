@@ -11,7 +11,7 @@ namespace OMnG
     {
         #region nested types
 
-        public sealed class UnknowType : Object
+        public sealed class UnknownType : Object
         {
 
         }
@@ -90,7 +90,7 @@ namespace OMnG
 
             Type type = GetLabelType(label);
             if (type == null)
-                return typeof(UnknowType);
+                return typeof(UnknownType);
             else
             {
                 if (!TypeLabels.ContainsKey(label))

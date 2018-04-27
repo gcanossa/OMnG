@@ -119,7 +119,7 @@ namespace UnitTest
                 typeof(IInterfaceA),
                 typeof(IInterfaceB),
                 typeof(AbstractClass),
-                typeof(TypeExtensionsConfiguration.UnknowType)
+                typeof(TypeExtensionsConfiguration.UnknownType)
             }, types);
         }
         
@@ -127,7 +127,7 @@ namespace UnitTest
         [Fact(DisplayName = nameof(GetInstanceOfMostSpecific))]
         public void GetInstanceOfMostSpecific()
         {
-            var types = TypeExtensions.GetLabels<ClassC>().GetTypesFromLabels();
+            var types = TypeExtensions.GetLabels<ClassC>().Union(new string[] { "Pippo" }).GetTypesFromLabels();
 
             Assert.True(types.GetInstanceOfMostSpecific() is ClassC);
 
